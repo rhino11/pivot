@@ -56,7 +56,7 @@ func TestFetchIssues_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockIssues)
+		_ = json.NewEncoder(w).Encode(mockIssues)
 	}))
 	defer server.Close()
 
@@ -94,7 +94,7 @@ func TestFetchIssues_InvalidStatusCode(t *testing.T) {
 	// Create test server that returns 404
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not Found"))
+		_, _ = w.Write([]byte("Not Found"))
 	}))
 	defer server.Close()
 
@@ -116,7 +116,7 @@ func TestFetchIssues_InvalidJSON(t *testing.T) {
 	// Create test server that returns invalid JSON
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("invalid json"))
+		_, _ = w.Write([]byte("invalid json"))
 	}))
 	defer server.Close()
 
@@ -137,7 +137,7 @@ func TestFetchIssues_EmptyResponse(t *testing.T) {
 	// Create test server that returns empty array
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -170,7 +170,7 @@ func TestFetchIssues_ServerError(t *testing.T) {
 	// Create test server that returns 500
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Internal Server Error"))
+		_, _ = w.Write([]byte("Internal Server Error"))
 	}))
 	defer server.Close()
 
@@ -216,7 +216,7 @@ func TestFetchIssues_LargeResponse(t *testing.T) {
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockIssues)
+		_ = json.NewEncoder(w).Encode(mockIssues)
 	}))
 	defer server.Close()
 
@@ -249,7 +249,7 @@ func TestFetchIssues_AuthorizationHeader(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -280,7 +280,7 @@ func TestFetchIssues_QueryParameters(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		_, _ = w.Write([]byte("[]"))
 	}))
 	defer server.Close()
 
@@ -300,7 +300,7 @@ func TestFetchIssues_VariousStatusCodes(t *testing.T) {
 		t.Run(fmt.Sprintf("StatusCode%d", statusCode), func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(statusCode)
-				w.Write([]byte("Error"))
+				_, _ = w.Write([]byte("Error"))
 			}))
 			defer server.Close()
 
@@ -468,7 +468,7 @@ func TestFetchIssues_CompleteWorkflow(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(issuesJSON))
+		_, _ = w.Write([]byte(issuesJSON))
 	}))
 	defer server.Close()
 
@@ -595,7 +595,7 @@ func TestFetchIssues_EdgeCaseResponses(t *testing.T) {
 	// Test with minimal valid JSON response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`[{"id":1,"number":1,"title":"","body":"","state":"open","created_at":"","updated_at":"","closed_at":"","labels":[],"assignees":[]}]`))
+		_, _ = w.Write([]byte(`[{"id":1,"number":1,"title":"","body":"","state":"open","created_at":"","updated_at":"","closed_at":"","labels":[],"assignees":[]}]`))
 	}))
 	defer server.Close()
 
@@ -634,7 +634,7 @@ func TestFetchIssues_NullFields(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(issueJSON))
+		_, _ = w.Write([]byte(issueJSON))
 	}))
 	defer server.Close()
 

@@ -26,7 +26,7 @@ func TestInitConfig(t *testing.T) {
 	// Write input to pipe
 	go func() {
 		defer w.Close()
-		w.WriteString(input)
+		_, _ = w.WriteString(input)
 	}()
 
 	// Run InitConfig
@@ -88,7 +88,7 @@ token: existing
 
 	go func() {
 		defer w.Close()
-		w.WriteString(input)
+		_, _ = w.WriteString(input)
 	}()
 
 	// Run InitConfig - should not error when declining to overwrite
@@ -112,7 +112,7 @@ token: existing
 // TODO: Fix stdin mocking issue with multiple readers
 func TestInitConfig_OverwriteExistingFile(t *testing.T) {
 	t.Skip("Skipping due to stdin mocking complexity with multiple readers")
-	
+
 	// This test is complex because InitConfig creates two separate bufio.NewReader(os.Stdin)
 	// instances - one for the overwrite prompt and one for the main config setup.
 	// The overwrite functionality is manually tested and works correctly.
@@ -211,12 +211,12 @@ token: yamltoken
 repo: ymlrepo
 token: ymltoken
 `
-	
+
 	err := os.WriteFile("config.yaml", []byte(yamlContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create config.yaml: %v", err)
 	}
-	
+
 	err = os.WriteFile("config.yml", []byte(ymlContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create config.yml: %v", err)

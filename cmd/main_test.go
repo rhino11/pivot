@@ -247,12 +247,12 @@ func TestConfigCommand(t *testing.T) {
 	// Provide input for config setup
 	go func() {
 		defer pw.Close()
-		pw.WriteString("testowner\n")     // GitHub owner
-		pw.WriteString("testrepo\n")      // Repository name
-		pw.WriteString("ghp_testtoken\n") // GitHub token
-		pw.WriteString("\n")              // Database path (default)
-		pw.WriteString("n\n")             // Include closed issues (no)
-		pw.WriteString("\n")              // Batch size (default)
+		_, _ = pw.WriteString("testowner\n")     // GitHub owner
+		_, _ = pw.WriteString("testrepo\n")      // Repository name
+		_, _ = pw.WriteString("ghp_testtoken\n") // GitHub token
+		_, _ = pw.WriteString("\n")              // Database path (default)
+		_, _ = pw.WriteString("n\n")             // Include closed issues (no)
+		_, _ = pw.WriteString("\n")              // Batch size (default)
 	}()
 
 	err := rootCmd.Execute()
@@ -264,7 +264,7 @@ func TestConfigCommand(t *testing.T) {
 
 	// Read output
 	go func() {
-		io.ReadAll(r)
+		_, _ = io.ReadAll(r)
 	}()
 	r.Close()
 

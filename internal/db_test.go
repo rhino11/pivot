@@ -265,7 +265,7 @@ func TestInitDBPermissionError(t *testing.T) {
 	// Test database creation with permission constraints
 	// Save original working directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	// Create a temporary directory and remove write permissions
 	tempDir := t.TempDir()
@@ -282,7 +282,7 @@ func TestInitDBPermissionError(t *testing.T) {
 	}
 
 	// Try to create database in read-only directory
-	os.Chdir(testPath)
+	_ = os.Chdir(testPath)
 
 	_, err = InitDB()
 	// On some systems this might still succeed due to SQLite behavior,

@@ -114,13 +114,17 @@ database: ./test_sync_insert_error.db
 	fetchIssuesFunc = func(owner, repo, token string) ([]Issue, error) {
 		return []Issue{
 			{
-				ID:        999999999999999, // Very large ID that might cause issues
-				Number:    1,
-				Title:     "Test Issue",
-				Body:      "Test body",
-				State:     "open",
-				Labels:    []struct{ Name string `json:"name"` }{{Name: "test"}},
-				Assignees: []struct{ Login string `json:"login"` }{{Login: "testuser"}},
+				ID:     999999999999999, // Very large ID that might cause issues
+				Number: 1,
+				Title:  "Test Issue",
+				Body:   "Test body",
+				State:  "open",
+				Labels: []struct {
+					Name string `json:"name"`
+				}{{Name: "test"}},
+				Assignees: []struct {
+					Login string `json:"login"`
+				}{{Login: "testuser"}},
 				CreatedAt: "2023-01-01T00:00:00Z",
 				UpdatedAt: "2023-01-02T00:00:00Z",
 				ClosedAt:  "",
@@ -207,25 +211,33 @@ database: ./test_sync_multiple.db
 	fetchIssuesFunc = func(owner, repo, token string) ([]Issue, error) {
 		return []Issue{
 			{
-				ID:        1,
-				Number:    1,
-				Title:     "First Issue",
-				Body:      "First body",
-				State:     "open",
-				Labels:    []struct{ Name string `json:"name"` }{{Name: "bug"}},
-				Assignees: []struct{ Login string `json:"login"` }{{Login: "user1"}},
+				ID:     1,
+				Number: 1,
+				Title:  "First Issue",
+				Body:   "First body",
+				State:  "open",
+				Labels: []struct {
+					Name string `json:"name"`
+				}{{Name: "bug"}},
+				Assignees: []struct {
+					Login string `json:"login"`
+				}{{Login: "user1"}},
 				CreatedAt: "2023-01-01T00:00:00Z",
 				UpdatedAt: "2023-01-02T00:00:00Z",
 				ClosedAt:  "",
 			},
 			{
-				ID:        2,
-				Number:    2,
-				Title:     "Second Issue",
-				Body:      "Second body",
-				State:     "closed",
-				Labels:    []struct{ Name string `json:"name"` }{{Name: "feature"}, {Name: "enhancement"}},
-				Assignees: []struct{ Login string `json:"login"` }{{Login: "user2"}, {Login: "user3"}},
+				ID:     2,
+				Number: 2,
+				Title:  "Second Issue",
+				Body:   "Second body",
+				State:  "closed",
+				Labels: []struct {
+					Name string `json:"name"`
+				}{{Name: "feature"}, {Name: "enhancement"}},
+				Assignees: []struct {
+					Login string `json:"login"`
+				}{{Login: "user2"}, {Login: "user3"}},
 				CreatedAt: "2023-01-03T00:00:00Z",
 				UpdatedAt: "2023-01-04T00:00:00Z",
 				ClosedAt:  "2023-01-04T00:00:00Z",
@@ -376,25 +388,33 @@ sync:
 
 		return []Issue{
 			{
-				ID:        123,
-				Number:    1,
-				Title:     "Bug Report",
-				Body:      "This is a bug",
-				State:     "open",
-				Labels:    []struct{ Name string `json:"name"` }{{Name: "bug"}, {Name: "urgent"}},
-				Assignees: []struct{ Login string `json:"login"` }{{Login: "dev1"}, {Login: "dev2"}},
+				ID:     123,
+				Number: 1,
+				Title:  "Bug Report",
+				Body:   "This is a bug",
+				State:  "open",
+				Labels: []struct {
+					Name string `json:"name"`
+				}{{Name: "bug"}, {Name: "urgent"}},
+				Assignees: []struct {
+					Login string `json:"login"`
+				}{{Login: "dev1"}, {Login: "dev2"}},
 				CreatedAt: "2023-01-01T12:00:00Z",
 				UpdatedAt: "2023-01-02T12:00:00Z",
 				ClosedAt:  "",
 			},
 			{
-				ID:        124,
-				Number:    2,
-				Title:     "Feature Request",
-				Body:      "Add this feature",
-				State:     "closed",
-				Labels:    []struct{ Name string `json:"name"` }{{Name: "enhancement"}},
-				Assignees: []struct{ Login string `json:"login"` }{},
+				ID:     124,
+				Number: 2,
+				Title:  "Feature Request",
+				Body:   "Add this feature",
+				State:  "closed",
+				Labels: []struct {
+					Name string `json:"name"`
+				}{{Name: "enhancement"}},
+				Assignees: []struct {
+					Login string `json:"login"`
+				}{},
 				CreatedAt: "2023-01-03T12:00:00Z",
 				UpdatedAt: "2023-01-04T12:00:00Z",
 				ClosedAt:  "2023-01-04T12:00:00Z",
