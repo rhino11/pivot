@@ -64,6 +64,7 @@ jobs:
       
       - name: Get version info
         id: version
+        shell: bash
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -80,6 +81,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+        shell: bash
         run: |
           BINARY_NAME=pivot
           if [ "${{ matrix.goos }}" = "windows" ]; then
@@ -114,6 +116,7 @@ jobs:
           path: ./artifacts
       
       - name: Prepare release assets
+        shell: bash
         run: |
           mkdir -p dist
           
@@ -139,6 +142,7 @@ jobs:
           cd ..
       
       - name: Create DEB package
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           mkdir -p deb/pivot_${VERSION}_amd64/DEBIAN
@@ -165,6 +169,7 @@ jobs:
           mv deb/pivot_${VERSION}_amd64.deb dist/
       
       - name: Create RPM spec and package
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           
@@ -219,6 +224,7 @@ jobs:
           cp rpm/RPMS/x86_64/pivot-${VERSION}-1.*.rpm dist/
       
       - name: Create Homebrew formula
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           
@@ -252,6 +258,7 @@ jobs:
           EOF
       
       - name: Create Chocolatey package
+        shell: bash
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           
