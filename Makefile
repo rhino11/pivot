@@ -44,9 +44,13 @@ help:
 	@echo "  test          - Run tests"
 	@echo "  lint          - Run Go linter"
 	@echo "  format        - Format Go code"
-	@echo "  run           - Run the CLI"
-	@echo "  install       - Install binary to system PATH"
-	@echo "  release       - Create release binaries"
+	@echo "  run           - Install to user PATH and run pivot"
+	@echo "  run-local     - Run pivot from build directory"
+	@echo "  install-user  - Install to user's ~/bin (no sudo)"
+	@echo "  install       - Install to system PATH (requires sudo)"
+	@echo "  uninstall-user- Remove from user's ~/bin"
+	@echo "  uninstall     - Remove from system PATH (requires sudo)"
+	@echo "  release       - Create release binaries with checksums"
 
 # Dependencies
 .PHONY: deps
@@ -81,7 +85,7 @@ build-all: clean
 .PHONY: clean
 clean:
 	rm -rf $(BUILD_DIR) $(DIST_DIR)
-	rm -f $(BINARY_NAME) coverage.out
+	rm -f $(BINARY_NAME) coverage*
 
 # Test
 .PHONY: test
@@ -100,15 +104,52 @@ format:
 	$(GO_CMD) fmt ./...
 	$(GO_CMD) mod tidy
 
-# Run
+# Run (installs to user's local bin and runs)
 .PHONY: run
-run: build
+run: build install-user
+	@echo "Running pivot..."
+	@pivot
+
+# Run without installing (original behavior)
+.PHONY: run-local  
+run-local: build
 	./$(BUILD_DIR)/$(BINARY_NAME)
 
-# Install to system PATH
+# Install to user's local bin (no sudo required)
+.PHONY: install-user
+install-user: build
+	@echo "Installing pivot to user PATH..."
+	@mkdir -p ~/bin
+	@cp $(BUILD_DIR)/$(BINARY_NAME) ~/bin/$(BINARY_NAME)
+	@echo "✅ pivot installed to ~/bin/$(BINARY_NAME)"
+	@if ! echo "$$PATH" | grep -q "$$HOME/bin"; then \
+		echo "⚠️  Note: ~/bin is not in your PATH. Add this to your shell profile:"; \
+		echo "   export PATH=\"\$$HOME/bin:\$$PATH\""; \
+	else \
+		echo "✅ pivot is now available from any directory"; \
+	fi
+
+# Install to system PATH (requires sudo)
 .PHONY: install
 install: build
-	cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
+	@echo "Installing pivot to system PATH..."
+	@sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/$(BINARY_NAME)
+	@echo "✅ pivot installed to /usr/local/bin/$(BINARY_NAME)"
+	@echo "You can now run 'pivot' from any directory"
+
+# Uninstall from user's local bin
+.PHONY: uninstall-user
+uninstall-user:
+	@echo "Removing pivot from user PATH..."
+	@rm -f ~/bin/$(BINARY_NAME)
+	@echo "✅ pivot removed from ~/bin"
+
+# Uninstall from system PATH
+.PHONY: uninstall
+uninstall:
+	@echo "Removing pivot from system PATH..."
+	@sudo rm -f /usr/local/bin/$(BINARY_NAME)
+	@echo "✅ pivot removed from system PATH"
 
 # Create release with checksums
 .PHONY: release
