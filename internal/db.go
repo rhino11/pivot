@@ -13,7 +13,13 @@ func Init() error {
 }
 
 func InitDB() (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", "./pivot.db")
+	// Try to get database path from config, fallback to default
+	dbPath := "./pivot.db"
+	if cfg, err := loadConfig(); err == nil {
+		dbPath = cfg.Database
+	}
+
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, err
 	}

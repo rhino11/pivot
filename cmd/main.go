@@ -14,7 +14,7 @@ var (
 	date    = "unknown"
 )
 
-func main() {
+func NewRootCommand() *cobra.Command {
 	var rootCmd = &cobra.Command{
 		Use:   "pivot",
 		Short: "GitHub Issues Management CLI",
@@ -23,12 +23,41 @@ func main() {
 
 	var initCmd = &cobra.Command{
 		Use:   "init",
-		Short: "Initialize the local issues database",
+		Short: "Initialize configuration and local issues database",
+		Long:  `Initialize Pivot by creating a configuration file and setting up the local database.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Check if config file exists, if not, setup configuration
+			if _, err := os.Stat("config.yml"); os.IsNotExist(err) {
+				if _, err := os.Stat("config.yaml"); os.IsNotExist(err) {
+					fmt.Println("Setting up Pivot configuration...")
+					if err := internal.InitConfig(); err != nil {
+						return fmt.Errorf("config setup failed: %w", err)
+					}
+				}
+			}
+
+			// Then initialize the database
+			fmt.Println("Initializing local issues database...")
 			if err := internal.Init(); err != nil {
-				return fmt.Errorf("init failed: %w", err)
+				return fmt.Errorf("database init failed: %w", err)
 			}
 			fmt.Println("✓ Initialized local issues database.")
+
+			fmt.Println()
+			fmt.Println("🎉 Pivot is ready to use!")
+			fmt.Println("Run 'pivot sync' to fetch your GitHub issues.")
+			return nil
+		},
+	}
+
+	var configCmd = &cobra.Command{
+		Use:   "config",
+		Short: "Configure Pivot settings",
+		Long:  `Set up or modify Pivot configuration interactively.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := internal.InitConfig(); err != nil {
+				return fmt.Errorf("config setup failed: %w", err)
+			}
 			return nil
 		},
 	}
@@ -49,18 +78,31 @@ func main() {
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("pivot %s\n", version)
+			fmt.Printf("pivot version %s\n", version)
 			fmt.Printf("commit: %s\n", commit)
 			fmt.Printf("built: %s\n", date)
 		},
 	}
 
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(syncCmd)
 	rootCmd.AddCommand(versionCmd)
 
+	return rootCmd
+}
+
+// Run executes the main application logic and returns an exit code
+func Run() int {
+	rootCmd := NewRootCommand()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
+}
+
+func main() {
+	os.Exit(Run())
 }

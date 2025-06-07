@@ -1,0 +1,15 @@
+# GitHub repository details
+owner: your-username-or-org
+repo: your-repository-name
+
+# GitHub Personal Access Token
+# Required scopes: repo (for private repos) or public_repo (for public repos)
+token: ghp_your_token_here
+
+# Optional: Database file path (default: ./pivot.db)
+database: ./pivot.db
+
+# Optional: Sync options
+sync:
+  include_closed: true    # Include closed issues (default: true)
+  batch_size: 100        # Number of issues to fetch per request (default: 100)

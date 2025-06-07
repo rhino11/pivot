@@ -3,7 +3,9 @@
 **Pivot** is a powerful CLI tool for syncing GitHub issues to a local database, enabling agile, AI-driven project management with offline capabilities.
 
 [![Build Status](https://github.com/rhino11/pivot/workflows/Build%20and%20Release/badge.svg)](https://github.com/rhino11/pivot/actions)
+[![Coverage Status](https://img.shields.io/badge/coverage-78.6%25-yellow.svg)](https://github.com/rhino11/pivot/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rhino11/pivot)](https://goreportcard.com/report/github.com/rhino11/pivot)
+[![Security Rating](https://img.shields.io/badge/security-A-brightgreen)](https://github.com/rhino11/pivot/security)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
@@ -96,6 +98,10 @@ pivot sync
 - `pivot help` - Show help information
 
 ### Configuration
+
+The `config.yaml` file contains your GitHub repository data, including secrets like the token `pivot` uses to access various API endpoints. The command `pivot init` ensures the config is populated, and subsequent commands won't function unless there is a valid `config.yaml`.
+
+There is a template `config.example.yaml` included in the versioned code. When you run `pivot init`, the actual `config.yaml` is generated. The `config.yaml` file is excluded from `git` tracking in `.gitignore`.
 
 The `config.yaml` file supports the following options:
 

@@ -2,6 +2,12 @@
 
 Thank you for your interest in contributing to Pivot CLI! This document provides guidelines and information for contributors.
 
+## GenAI Starting Prompt
+
+To date, I have developed this project largely with Claude 4 Sonnet running in Agent mode in VS Code. If you are also using GenAI, I recommend the following prompt to get your PR started on the right track.
+
+>Hey Claude! We're going to work a PR consisting of a {feature|fix|...|chore} from the pivot backlog. Before we start coding, review CONTRIBUTING.md to ensure we have a strong Test Driven Development approach. Also, install the latest binary for the pivot package itself to sync local GitHub issues for this project with upstream issues.
+
 ## Development Setup
 
 ### Prerequisites
@@ -66,15 +72,15 @@ Thank you for your interest in contributing to Pivot CLI! This document provides
 
 ### Commit Message Convention
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification, with an additional modifier to delineate human contributions from AI contributions:
 
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, etc.)
-- `refactor:` - Code refactoring
-- `test:` - Test additions or modifications
-- `chore:` - Maintenance tasks
+- `{hu|ai}:feat:` - New features
+- `{hu|ai}:fix:` - Bug fixes
+- `{hu|ai}:docs:` - Documentation changes
+- `{hu|ai}:style:` - Code style changes (formatting, etc.)
+- `{hu|ai}:refactor:` - Code refactoring
+- `{hu|ai}:test:` - Test additions or modifications
+- `{hu|ai}:chore:` - Maintenance tasks
 
 ### Testing
 
@@ -135,11 +141,13 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
    - [ ] Tests pass locally
    - [ ] New tests added (if applicable)
    - [ ] Manual testing completed
+   - [ ] Overall coverage remains over 80%
    
    ## Checklist
    - [ ] Code follows project style guidelines
    - [ ] Self-review completed
    - [ ] Documentation updated
+   - [ ] Secrets not accidentally added to 'config.example.yml'
    ```
 
 3. **Review Process:**

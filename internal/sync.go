@@ -8,20 +8,47 @@ import (
 )
 
 type Config struct {
+	Owner    string     `yaml:"owner"`
+	Repo     string     `yaml:"repo"`
+	Token    string     `yaml:"token"`
+	Database string     `yaml:"database,omitempty"`
+	Sync     SyncConfig `yaml:"sync,omitempty"`
+}
+
+type SyncConfig struct {
+	IncludeClosed bool `yaml:"include_closed,omitempty"`
+	BatchSize     int  `yaml:"batch_size,omitempty"`
+}
+
+// GitHubConfig is kept for backward compatibility
+type GitHubConfig struct {
 	Owner string `yaml:"owner"`
 	Repo  string `yaml:"repo"`
 	Token string `yaml:"token"`
 }
 
 func loadConfig() (*Config, error) {
-	data, err := os.ReadFile("config.yaml")
+	data, err := os.ReadFile("config.yml")
 	if err != nil {
-		return nil, err
+		// Try config.yaml for backward compatibility
+		data, err = os.ReadFile("config.yaml")
+		if err != nil {
+			return nil, err
+		}
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
+
+	// Set defaults
+	if cfg.Database == "" {
+		cfg.Database = "./pivot.db"
+	}
+	if cfg.Sync.BatchSize == 0 {
+		cfg.Sync.BatchSize = 100
+	}
+
 	return &cfg, nil
 }
 
