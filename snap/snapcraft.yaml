@@ -1,0 +1,31 @@
+name: pivot
+base: core22
+version: git
+summary: GitHub Issues Management CLI
+description: |
+  Pivot is a CLI tool for managing GitHub issues locally with offline sync capabilities.
+  It allows you to sync GitHub issues to a local SQLite database for offline access and management.
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+apps:
+  pivot:
+    command: bin/pivot
+    plugs:
+      - home
+      - network
+      - network-bind
+
+parts:
+  pivot:
+    plugin: go
+    source: .
+    build-snaps: [go/1.22/stable]
+    override-build: |
+      export CGO_ENABLED=1
+      go build -ldflags="-s -w" -o $SNAPCRAFT_PART_INSTALL/bin/pivot ./cmd/main.go

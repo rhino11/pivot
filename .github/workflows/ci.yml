@@ -1,0 +1,322 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run tests
+        run: go test -v ./...
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+  build:
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+          - os: windows-latest
+            goos: windows
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Get version info
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git describe --tags --always --dirty)
+          fi
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+          echo "date=$DATE" >> $GITHUB_OUTPUT
+      
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          BINARY_NAME=pivot
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+          fi
+          
+          go build \
+            -ldflags="-s -w -X main.version=${{ steps.version.outputs.version }} -X main.commit=${{ steps.version.outputs.commit }} -X main.date=${{ steps.version.outputs.date }}" \
+            -o "${BINARY_NAME}" \
+            ./cmd/main.go
+      
+      - name: Archive binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: pivot-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: pivot${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+      
+      - name: Prepare release assets
+        run: |
+          mkdir -p dist
+          
+          # Copy and rename binaries
+          for dir in artifacts/*/; do
+            if [ -d "$dir" ]; then
+              artifact_name=$(basename "$dir")
+              # Extract OS and ARCH from artifact name (pivot-linux-amd64)
+              os_arch=${artifact_name#pivot-}
+              
+              # Find the binary in the artifact directory
+              if [ -f "$dir/pivot" ]; then
+                cp "$dir/pivot" "dist/pivot-$os_arch"
+              elif [ -f "$dir/pivot.exe" ]; then
+                cp "$dir/pivot.exe" "dist/pivot-$os_arch.exe"
+              fi
+            fi
+          done
+          
+          # Create checksums
+          cd dist
+          sha256sum * > checksums.txt
+          cd ..
+      
+      - name: Create DEB package
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          mkdir -p deb/pivot_${VERSION}_amd64/DEBIAN
+          mkdir -p deb/pivot_${VERSION}_amd64/usr/local/bin
+          
+          # Copy binary
+          cp dist/pivot-linux-amd64 deb/pivot_${VERSION}_amd64/usr/local/bin/pivot
+          chmod +x deb/pivot_${VERSION}_amd64/usr/local/bin/pivot
+          
+          # Create control file
+          cat > deb/pivot_${VERSION}_amd64/DEBIAN/control << EOF
+          Package: pivot
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: Ryan <ryan@example.com>
+          Description: GitHub Issues Management CLI
+           Pivot is a CLI tool for managing GitHub issues locally with offline sync capabilities.
+          EOF
+          
+          # Build DEB package
+          dpkg-deb --build deb/pivot_${VERSION}_amd64
+          mv deb/pivot_${VERSION}_amd64.deb dist/
+      
+      - name: Create RPM spec and package
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          
+          # Install rpm tools
+          sudo apt-get update
+          sudo apt-get install -y rpm
+          
+          # Create RPM build structure
+          mkdir -p rpm/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          mkdir -p rpm/SOURCES/pivot-${VERSION}/usr/local/bin
+          
+          # Copy binary
+          cp dist/pivot-linux-amd64 rpm/SOURCES/pivot-${VERSION}/usr/local/bin/pivot
+          chmod +x rpm/SOURCES/pivot-${VERSION}/usr/local/bin/pivot
+          
+          # Create tarball
+          cd rpm/SOURCES
+          tar czf pivot-${VERSION}.tar.gz pivot-${VERSION}/
+          cd ../..
+          
+          # Create spec file
+          cat > rpm/SPECS/pivot.spec << EOF
+          Name:           pivot
+          Version:        ${VERSION}
+          Release:        1%{?dist}
+          Summary:        GitHub Issues Management CLI
+          License:        MIT
+          URL:            https://github.com/rhino11/pivot
+          Source0:        %{name}-%{version}.tar.gz
+          BuildArch:      x86_64
+          
+          %description
+          Pivot is a CLI tool for managing GitHub issues locally with offline sync capabilities.
+          
+          %prep
+          %setup -q
+          
+          %install
+          mkdir -p %{buildroot}/usr/local/bin
+          cp usr/local/bin/pivot %{buildroot}/usr/local/bin/
+          
+          %files
+          /usr/local/bin/pivot
+          
+          %changelog
+          * $(date +'%a %b %d %Y') Ryan <ryan@example.com> - ${VERSION}-1
+          - Initial package
+          EOF
+          
+          # Build RPM
+          rpmbuild --define "_topdir $(pwd)/rpm" -ba rpm/SPECS/pivot.spec
+          cp rpm/RPMS/x86_64/pivot-${VERSION}-1.*.rpm dist/
+      
+      - name: Create Homebrew formula
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          
+          # Calculate SHA256 for macOS binaries
+          SHA256_AMD64=$(sha256sum dist/pivot-darwin-amd64 | cut -d' ' -f1)
+          SHA256_ARM64=$(sha256sum dist/pivot-darwin-arm64 | cut -d' ' -f1)
+          
+          mkdir -p homebrew
+          cat > homebrew/pivot.rb << EOF
+          class Pivot < Formula
+            desc "GitHub Issues Management CLI"
+            homepage "https://github.com/rhino11/pivot"
+            version "${VERSION}"
+            
+            if Hardware::CPU.arm?
+              url "https://github.com/rhino11/pivot/releases/download/v${VERSION}/pivot-darwin-arm64"
+              sha256 "${SHA256_ARM64}"
+            else
+              url "https://github.com/rhino11/pivot/releases/download/v${VERSION}/pivot-darwin-amd64"
+              sha256 "${SHA256_AMD64}"
+            end
+            
+            def install
+              bin.install Dir["pivot-darwin-*"].first => "pivot"
+            end
+            
+            test do
+              assert_match "pivot", shell_output("#{bin}/pivot version")
+            end
+          end
+          EOF
+      
+      - name: Create Chocolatey package
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          
+          mkdir -p chocolatey/{tools,pivot}
+          
+          # Create nuspec file
+          cat > chocolatey/pivot/pivot.nuspec << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+            <metadata>
+              <id>pivot</id>
+              <version>${VERSION}</version>
+              <title>Pivot CLI</title>
+              <authors>Ryan</authors>
+              <projectUrl>https://github.com/rhino11/pivot</projectUrl>
+              <description>GitHub Issues Management CLI</description>
+              <summary>Pivot is a CLI tool for managing GitHub issues locally with offline sync capabilities.</summary>
+              <tags>cli github issues management</tags>
+              <licenseUrl>https://github.com/rhino11/pivot/blob/main/LICENSE</licenseUrl>
+              <requireLicenseAcceptance>false</requireLicenseAcceptance>
+            </metadata>
+          </package>
+          EOF
+          
+          # Create install script
+          cat > chocolatey/tools/chocolateyinstall.ps1 << 'EOF'
+          \$packageName = 'pivot'
+          \$url64 = 'https://github.com/rhino11/pivot/releases/download/v${VERSION}/pivot-windows-amd64.exe'
+          \$checksum64 = '$(sha256sum dist/pivot-windows-amd64.exe | cut -d' ' -f1)'
+          
+          Install-ChocolateyPackage \$packageName 'exe' '/S' \$url64 -checksum64 \$checksum64 -checksumType64 'sha256'
+          EOF
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*
+            homebrew/pivot.rb
+          body: |
+            ## Installation
+            
+            ### Homebrew (macOS)
+            ```bash
+            brew install rhino11/tap/pivot
+            ```
+            
+            ### APT (Ubuntu/Debian)
+            ```bash
+            wget https://github.com/rhino11/pivot/releases/download/${{ github.ref_name }}/pivot_${{ github.ref_name }}_amd64.deb
+            sudo dpkg -i pivot_${{ github.ref_name }}_amd64.deb
+            ```
+            
+            ### YUM/DNF (RHEL/Fedora/CentOS)
+            ```bash
+            wget https://github.com/rhino11/pivot/releases/download/${{ github.ref_name }}/pivot-${{ github.ref_name }}-1.x86_64.rpm
+            sudo rpm -i pivot-${{ github.ref_name }}-1.x86_64.rpm
+            ```
+            
+            ### Chocolatey (Windows)
+            ```powershell
+            choco install pivot
+            ```
+            
+            ### Manual Installation
+            Download the appropriate binary for your platform from the assets below and place it in your PATH.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

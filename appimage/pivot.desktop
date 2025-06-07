@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pivot
+Exec=pivot
+Icon=pivot
+Comment=GitHub Issues Management CLI
+Categories=Development;
+Terminal=true
