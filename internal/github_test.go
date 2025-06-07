@@ -550,3 +550,105 @@ func fetchIssuesFromURL(baseURL, owner, repo, token string) ([]Issue, error) {
 
 	return issues, nil
 }
+
+func TestFetchIssues_ReadBodyError(t *testing.T) {
+	// Create test server that returns a response but closes connection during body read
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Length", "1000") // Claim large content but don't send it
+		w.WriteHeader(http.StatusOK)
+		// Close connection immediately
+		hj, ok := w.(http.Hijacker)
+		if ok {
+			conn, _, _ := hj.Hijack()
+			conn.Close()
+		}
+	}))
+	defer server.Close()
+
+	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
+	if err == nil {
+		t.Fatal("Expected error for read body failure")
+	}
+	if issues != nil {
+		t.Error("Expected nil issues on error")
+	}
+}
+
+func TestFetchIssues_RequestError(t *testing.T) {
+	// Test with invalid URL characters that could cause request creation to fail
+	invalidChars := []string{
+		"owner\x00with\x00nulls", // null bytes
+		"owner\nwith\nnewlines",  // newlines
+		"owner\rwith\rcarriage",  // carriage returns
+	}
+
+	for _, invalidOwner := range invalidChars {
+		_, err := FetchIssues(invalidOwner, "repo", "token")
+		if err == nil {
+			t.Errorf("Expected error with invalid owner '%s'", invalidOwner)
+		}
+	}
+}
+
+func TestFetchIssues_EdgeCaseResponses(t *testing.T) {
+	// Test with minimal valid JSON response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`[{"id":1,"number":1,"title":"","body":"","state":"open","created_at":"","updated_at":"","closed_at":"","labels":[],"assignees":[]}]`))
+	}))
+	defer server.Close()
+
+	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
+	if err != nil {
+		t.Fatalf("Expected no error for minimal JSON, got: %v", err)
+	}
+
+	if len(issues) != 1 {
+		t.Fatalf("Expected 1 issue, got %d", len(issues))
+	}
+
+	issue := issues[0]
+	if issue.ID != 1 {
+		t.Errorf("Expected ID 1, got %d", issue.ID)
+	}
+	if issue.Title != "" {
+		t.Errorf("Expected empty title, got '%s'", issue.Title)
+	}
+}
+
+func TestFetchIssues_NullFields(t *testing.T) {
+	// Test with null closed_at field
+	issueJSON := `[{
+		"id": 999,
+		"number": 999,
+		"title": "Test Issue",
+		"body": "Test body",
+		"state": "open",
+		"created_at": "2025-01-01T00:00:00Z",
+		"updated_at": "2025-01-01T00:00:00Z",
+		"closed_at": null,
+		"labels": [],
+		"assignees": []
+	}]`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(issueJSON))
+	}))
+	defer server.Close()
+
+	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
+	if err != nil {
+		t.Fatalf("Expected no error for null fields, got: %v", err)
+	}
+
+	if len(issues) != 1 {
+		t.Fatalf("Expected 1 issue, got %d", len(issues))
+	}
+
+	issue := issues[0]
+	if issue.ClosedAt != "" {
+		t.Errorf("Expected empty closed_at for null value, got '%s'", issue.ClosedAt)
+	}
+}
