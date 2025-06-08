@@ -43,6 +43,7 @@ help:
 	@echo "  deps          - Install Go dependencies"
 	@echo "  test          - Run tests"
 	@echo "  lint          - Run Go linter"
+	@echo "  coverage      - Generate test coverage report"
 	@echo "  format        - Format Go code"
 	@echo "  run           - Install to user PATH and run pivot"
 	@echo "  run-local     - Run pivot from build directory"
@@ -97,6 +98,16 @@ test:
 lint:
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@export PATH=$$PATH:$$(go env GOPATH)/bin && golangci-lint run ./...
+
+# Coverage
+.PHONY: coverage
+coverage:
+	$(GO_CMD) test $(GO_TEST_FLAGS) ./...
+	@echo "Generating coverage report..."
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+	@echo "To view, open coverage.html in your browser."
+	@echo "You can also run 'go tool cover -func=coverage.out' for a summary."
 
 # Format
 .PHONY: format
