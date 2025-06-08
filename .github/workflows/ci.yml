@@ -257,6 +257,29 @@ jobs:
           end
           EOF
       
+      - name: Update Homebrew tap
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          
+          # Calculate SHA256 for macOS binaries
+          SHA256_AMD64=$(sha256sum dist/pivot-darwin-amd64 | cut -d' ' -f1)
+          SHA256_ARM64=$(sha256sum dist/pivot-darwin-arm64 | cut -d' ' -f1)
+          
+          # Check if homebrew-tap repository exists
+          if curl -s -f -I "https://github.com/rhino11/homebrew-tap" >/dev/null 2>&1; then
+            echo "Homebrew tap repository exists, triggering update..."
+            
+            # Trigger the workflow dispatch in the homebrew-tap repository
+            curl -X POST \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/rhino11/homebrew-tap/dispatches \
+              -d "{\"event_type\":\"update-formula\",\"client_payload\":{\"version\":\"v${VERSION}\",\"sha256_amd64\":\"${SHA256_AMD64}\",\"sha256_arm64\":\"${SHA256_ARM64}\"}}" || echo "Failed to trigger homebrew update, but continuing..."
+          else
+            echo "Homebrew tap repository doesn't exist yet. Run scripts/setup-homebrew-tap.sh to set it up."
+          fi
+      
       - name: Create Chocolatey package
         shell: bash
         run: |
