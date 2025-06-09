@@ -1,3 +1,9 @@
+[![Build Status](https://github.com/rhino11/pivot/workflows/Build%20and%20Release/badge.svg)](https://github.com/rhino11/pivot/actions)
+[![Coverage Status](https://img.shields.io/badge/coverage-80.6%25-green.svg)](https://github.com/rhino11/pivot/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rhino11/pivot)](https://goreportcard.com/report/github.com/rhino11/pivot)
+[![Security Rating](https://img.shields.io/badge/security-A-brightgreen)](https://github.com/rhino11/pivot/security)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # Pivot CLI
 
 **Pivot** is a CLI tool for syncing GitHub issues to a local database, enabling agile, AI-driven project management with offline capabilities.
@@ -7,12 +13,6 @@ As I've worked with GenAI coding assistants, I've noticed that they tend to crea
 I created `pivot` to help developers like me keep their GenAI assistant focused on the human-owned backlog. My hypothesis that led to creating pivot was that routine use of project management tools can help the AI work in small, high-quality batches just like us humans try to do. GenAI can, of course, help inform and maintain this backlog for or alongside us humans. The `pivot` tool just helps us work in an agile fashion with the robots, which is a layer higher than "vibe coding" currently allows.
 
 The first `pivot` release validates issue synchronization, local configuration management, and multi-platform binary and package distribution. To fully integrate with GenAI coding assistants, expect a `pivot` Model Context Protocol (MCP) background service to follow soon.
-
-[![Build Status](https://github.com/rhino11/pivot/workflows/Build%20and%20Release/badge.svg)](https://github.com/rhino11/pivot/actions)
-[![Coverage Status](https://img.shields.io/badge/coverage-80.6%25-green.svg)](https://github.com/rhino11/pivot/actions)
-[![Go Report Card](https://goreportcard.com/badge/github.com/rhino11/pivot)](https://goreportcard.com/report/github.com/rhino11/pivot)
-[![Security Rating](https://img.shields.io/badge/security-A-brightgreen)](https://github.com/rhino11/pivot/security)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
