@@ -155,9 +155,9 @@ test_package_installation() {
         return 0
     fi
     
-    # Install with timeout to prevent hanging
-    if ! timeout 300 brew install "$PACKAGE_NAME"; then
-        log_error "Package installation failed or timed out"
+    # Install package (no timeout on macOS by default)
+    if ! brew install "$PACKAGE_NAME"; then
+        log_error "Package installation failed"
         return 1
     fi
     
