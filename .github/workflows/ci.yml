@@ -350,3 +350,54 @@ jobs:
             Download the appropriate binary for your platform from the assets below and place it in your PATH.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  e2e-homebrew-macos:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Wait for release to be available
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Waiting for release $VERSION to be available..."
+          
+          max_attempts=30
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts: Checking release..."
+            
+            if curl -s -f "https://api.github.com/repos/rhino11/pivot/releases/tags/$VERSION" >/dev/null; then
+              echo "✅ Release is available"
+              break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Release not available after $max_attempts attempts"
+              exit 1
+            fi
+            
+            sleep 30
+            ((attempt++))
+          done
+      
+      - name: Run Homebrew E2E Test
+        env:
+          TEST_VERSION: ${{ github.ref_name }}
+        run: |
+          chmod +x ./test/e2e/homebrew-macos-e2e.sh
+          ./test/e2e/homebrew-macos-e2e.sh $TEST_VERSION
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-e2e-results
+          path: |
+            /tmp/homebrew-e2e-*.log
+          retention-days: 7
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

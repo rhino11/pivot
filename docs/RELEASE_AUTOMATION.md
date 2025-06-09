@@ -169,7 +169,37 @@ git push origin main
 - [ ] Test Homebrew installation: `brew install rhino11/tap/pivot`
 - [ ] Test direct download from releases page
 - [ ] Run installation tests: `./scripts/test-installation.sh vX.Y.Z`
+- [ ] Run Homebrew E2E test: `./scripts/test-homebrew-e2e.sh vX.Y.Z`
 - [ ] Verify package manager installations work
+- [ ] Check CI E2E test results in GitHub Actions
+
+### E2E Testing
+
+The project includes comprehensive E2E testing that validates the complete user experience:
+
+#### Automated E2E Tests (CI)
+- **Homebrew macOS test**: Runs on every tagged release
+- **Cross-platform installation**: Tests multiple package managers
+- **Basic functionality**: Validates core commands work
+- **Cleanup verification**: Ensures clean test environment
+
+#### Manual E2E Testing
+```bash
+# Local Homebrew E2E test
+./scripts/test-homebrew-e2e.sh
+
+# Test with local build (development)
+./scripts/test-homebrew-e2e.sh --local-build
+
+# Dry run (no actual installation)
+./scripts/test-homebrew-e2e.sh --dry-run
+
+# Cross-platform installation test
+./scripts/test-installation.sh
+
+# Cleanup test installations
+./scripts/test-homebrew-e2e.sh --cleanup
+```
 
 ## Troubleshooting
 
