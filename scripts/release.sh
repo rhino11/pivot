@@ -138,7 +138,9 @@ else
     read -p "Would you like to auto-update the Homebrew tap? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        setup_homebrew_tap $VERSION
+        chmod +x ./scripts/setup-homebrew-tap.sh
+        log_info "Setting up Homebrew tap for version $VERSION..."
+        ./scripts/setup-homebrew-tap.sh $VERSION
     fi
 fi
 
