@@ -52,6 +52,14 @@ help:
 	@echo "  uninstall-user- Remove from user's ~/bin"
 	@echo "  uninstall     - Remove from system PATH (requires sudo)"
 	@echo "  release       - Create release binaries with checksums"
+	@echo "  test-e2e      - Run end-to-end tests"
+	@echo "  test-homebrew-e2e - Run Homebrew E2E test (macOS only)"
+	@echo "  test-homebrew-local - Test local build via Homebrew"
+	@echo "  test-cleanup  - Clean up test installations"
+	@echo "  test-e2e      - Run end-to-end tests"
+	@echo "  test-homebrew-e2e - Run Homebrew end-to-end test (macOS only)"
+	@echo "  test-homebrew-local - Test local build via Homebrew"
+	@echo "  test-cleanup  - Cleanup test installations"
 
 # Dependencies
 .PHONY: deps
@@ -172,3 +180,27 @@ release: build-all
 		fi; \
 	done
 	@echo "Release files created in $(DIST_DIR)/"
+
+# E2E Testing
+.PHONY: test-e2e
+test-e2e:
+	@echo "Running E2E tests..."
+	@./test/e2e/end-user-package-install.sh
+
+# Homebrew E2E Test (macOS only)
+.PHONY: test-homebrew-e2e
+test-homebrew-e2e:
+	@echo "Running Homebrew E2E test..."
+	@./scripts/test-homebrew-e2e.sh
+
+# Test with local build via Homebrew
+.PHONY: test-homebrew-local
+test-homebrew-local:
+	@echo "Testing local build via Homebrew..."
+	@./scripts/test-homebrew-e2e.sh --local-build
+
+# Cleanup test installations
+.PHONY: test-cleanup
+test-cleanup:
+	@echo "Cleaning up test installations..."
+	@./scripts/test-homebrew-e2e.sh --cleanup

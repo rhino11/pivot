@@ -236,6 +236,52 @@ The release process is fully automated:
 - **Multiple package formats** (DEB, RPM, Chocolatey) are generated
 - **Installation testing** ensures all delivery methods work correctly
 
+## E2E Testing
+
+## Homebrew macOS E2E Testing
+
+The project includes comprehensive end-to-end testing for Homebrew installation on macOS, ensuring the complete user experience works correctly from tap addition through package installation and basic functionality verification.
+
+### Local Development
+
+```bash
+# Run E2E test with latest version
+make test-homebrew-e2e
+
+# Test with local build (no release required)
+make test-homebrew-local
+
+# Dry run (no actual installation)
+./scripts/test-homebrew-e2e.sh --dry-run
+
+# Test specific version
+./scripts/test-homebrew-e2e.sh v1.1.0
+
+# Clean up test installations
+make test-cleanup
+```
+
+### What the E2E Test Covers
+
+1. **Prerequisites validation** - macOS and Homebrew availability
+2. **Clean state verification** - ensures no conflicting installations
+3. **Tap addition** - `brew tap rhino11/tap`
+4. **Package installation** - `brew install pivot`
+5. **Basic functionality** - version, help, and config commands
+6. **Package information** - validates installation metadata
+7. **Formula validation** - homebrew formula audit
+8. **Version consistency** - ensures correct version installed
+9. **Automatic cleanup** - removes test installations
+
+### CI Integration
+
+The E2E test runs automatically in GitHub Actions on every tagged release:
+
+- **Triggers**: After successful release creation
+- **Platform**: macOS runner (latest)
+- **Timeout**: 10 minutes with proper error handling
+- **Artifacts**: Test logs uploaded for debugging
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -245,4 +291,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📚 [Documentation](https://github.com/rhino11/pivot/wiki)
 - 🐛 [Issue Tracker](https://github.com/rhino11/pivot/issues)
 - 💬 [Discussions](https://github.com/rhino11/pivot/discussions)
-- Release binaries for major OSes
