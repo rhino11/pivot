@@ -2,6 +2,17 @@
 
 This file tracks the version history and release notes for Pivot CLI.
 
+## v1.0.3
+
+- Fixed release.sh relative path to setup-homebrew-tap.sh
+
+## v1.0.2
+
+- Fixed issues with Homebrew formula publication
+- Improved release automation for Homebrew compatibility
+- Updated documentation for Homebrew installation steps
+- Minor bug fixes related to package distribution
+
 ## v1.0.0 (Current)
 
 - Initial release of Pivot CLI
