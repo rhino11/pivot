@@ -60,6 +60,7 @@ help:
 	@echo "  test-homebrew-e2e - Run Homebrew end-to-end test (macOS only)"
 	@echo "  test-homebrew-local - Test local build via Homebrew"
 	@echo "  test-cleanup  - Cleanup test installations"
+	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
 
 # Dependencies
 .PHONY: deps
@@ -204,3 +205,9 @@ test-homebrew-local:
 test-cleanup:
 	@echo "Cleaning up test installations..."
 	@./scripts/test-homebrew-e2e.sh --cleanup
+
+# Submit to Homebrew Core
+.PHONY: submit-homebrew-core
+submit-homebrew-core:
+	@echo "Submitting pivot to Homebrew Core..."
+	@./scripts/submit-to-homebrew-core.sh
