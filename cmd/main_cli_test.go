@@ -29,10 +29,14 @@ database: ./test-pivot.db
 
 	// Change to temp directory
 	oldDir, _ := os.Getwd()
-	os.Chdir(tempDir)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
 
 	cleanup := func() {
-		os.Chdir(oldDir)
+		if err := os.Chdir(oldDir); err != nil {
+			t.Logf("Warning: Failed to change back to original directory: %v", err)
+		}
 		os.Remove(filepath.Join(tempDir, "test-pivot.db"))
 	}
 
@@ -110,8 +114,14 @@ func TestInitCommand(t *testing.T) {
 	t.Run("successful init without existing config", func(t *testing.T) {
 		tempDir := t.TempDir()
 		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		defer func() {
+			if err := os.Chdir(oldDir); err != nil {
+				t.Logf("Warning: Failed to change back to original directory: %v", err)
+			}
+		}()
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
 
 		// Create a minimal valid config first to avoid interactive setup
 		configContent := `owner: testowner
@@ -188,11 +198,21 @@ database: ./test-pivot.db
 		if err != nil {
 			t.Fatalf("Failed to create restricted directory: %v", err)
 		}
-		defer os.Chmod(restrictedDir, 0755) // cleanup
+		defer func() {
+			if err := os.Chmod(restrictedDir, 0755); err != nil {
+				t.Logf("Warning: Failed to restore directory permissions: %v", err)
+			}
+		}()
 
 		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(restrictedDir)
+		defer func() {
+			if err := os.Chdir(oldDir); err != nil {
+				t.Logf("Warning: Failed to change back to original directory: %v", err)
+			}
+		}()
+		if err := os.Chdir(restrictedDir); err != nil {
+			t.Fatalf("Failed to change to restricted directory: %v", err)
+		}
 
 		// Create config that points to a database in restricted location
 		configContent := `owner: testowner
@@ -248,8 +268,14 @@ func TestConfigCommand(t *testing.T) {
 	t.Run("config command without interaction", func(t *testing.T) {
 		tempDir := t.TempDir()
 		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		defer func() {
+			if err := os.Chdir(oldDir); err != nil {
+				t.Logf("Warning: Failed to change back to original directory: %v", err)
+			}
+		}()
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
 
 		// The config command will try to be interactive, but we can't easily test that
 		// So we'll just verify it doesn't crash when called
@@ -276,8 +302,14 @@ func TestSyncCommand(t *testing.T) {
 	t.Run("sync without config should fail", func(t *testing.T) {
 		tempDir := t.TempDir()
 		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		defer func() {
+			if err := os.Chdir(oldDir); err != nil {
+				t.Logf("Warning: Failed to change back to original directory: %v", err)
+			}
+		}()
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
 
 		output := &bytes.Buffer{}
 		cmd := NewRootCommand()
@@ -298,8 +330,14 @@ func TestSyncCommand(t *testing.T) {
 	t.Run("sync with invalid config should fail", func(t *testing.T) {
 		tempDir := t.TempDir()
 		oldDir, _ := os.Getwd()
-		defer os.Chdir(oldDir)
-		os.Chdir(tempDir)
+		defer func() {
+			if err := os.Chdir(oldDir); err != nil {
+				t.Logf("Warning: Failed to change back to original directory: %v", err)
+			}
+		}()
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
 
 		// Create invalid config
 		configContent := `invalid yaml content:`
@@ -447,7 +485,7 @@ func BenchmarkVersionCommand(b *testing.B) {
 		cmd.SetOut(output)
 		cmd.SetErr(output)
 		cmd.SetArgs([]string{"version"})
-		cmd.Execute()
+		_ = cmd.Execute() // Ignore error in benchmark
 	}
 }
 
@@ -458,7 +496,7 @@ func BenchmarkHelpCommand(b *testing.B) {
 		cmd.SetOut(output)
 		cmd.SetErr(output)
 		cmd.SetArgs([]string{"--help"})
-		cmd.Execute()
+		_ = cmd.Execute() // Ignore error in benchmark
 	}
 }
 

@@ -65,6 +65,54 @@ help:
 	@echo "  test-post-release - Run post-release validation tests"
 	@echo "  test-all      - Run all test suites (unit + CLI + security + E2E)"
 	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
+	@echo "  setup-badges  - Setup dynamic badges for repository"
+	@echo "  ci            - Run complete CI pipeline locally (deps + format + lint + test + security + build)"
+	@echo "  ci-full       - Run full CI pipeline with coverage, E2E tests, and multi-platform builds"
+	@echo "  ci-quick      - Run quick CI validation for development (format + lint + test + cli)"
+
+# CI Pipeline - Run complete CI pipeline locally
+.PHONY: ci
+ci: clean deps format lint test test-cli test-security build
+	@echo ""
+	@echo "🎉 CI Pipeline completed successfully!"
+	@echo "✅ Dependencies installed"
+	@echo "✅ Code formatted"
+	@echo "✅ Linting passed"
+	@echo "✅ Unit tests passed"
+	@echo "✅ CLI tests passed"
+	@echo "✅ Security tests passed"
+	@echo "✅ Build successful"
+	@echo ""
+	@echo "Ready for commit and push! 🚀"
+
+# Full CI Pipeline - Includes coverage, E2E tests, and multi-platform builds
+.PHONY: ci-full
+ci-full: clean deps format lint test coverage test-cli test-security build-all test-e2e
+	@echo ""
+	@echo "🎉 Full CI Pipeline completed successfully!"
+	@echo "✅ Dependencies installed"
+	@echo "✅ Code formatted"
+	@echo "✅ Linting passed"
+	@echo "✅ Unit tests passed"
+	@echo "✅ Coverage generated"
+	@echo "✅ CLI tests passed"
+	@echo "✅ Security tests passed"
+	@echo "✅ Multi-platform builds successful"
+	@echo "✅ E2E tests passed"
+	@echo ""
+	@echo "Ready for release! 🚀"
+
+# Quick CI - Fast validation for development
+.PHONY: ci-quick
+ci-quick: format lint test test-cli
+	@echo ""
+	@echo "🎉 Quick CI completed successfully!"
+	@echo "✅ Code formatted"
+	@echo "✅ Linting passed"
+	@echo "✅ Unit tests passed"
+	@echo "✅ CLI tests passed"
+	@echo ""
+	@echo "Ready for development! 🚀"
 
 # Dependencies
 .PHONY: deps
