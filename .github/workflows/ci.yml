@@ -34,7 +34,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ secrets.COVERAGE_GIST_ID }}
           filename: pivot-coverage.json
           label: Coverage
@@ -110,7 +110,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ secrets.SECURITY_GIST_ID }}
           filename: pivot-security.json
           label: Security
@@ -136,7 +136,7 @@ jobs:
       - name: Create build status badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ secrets.BADGES_GIST_ID }}
           filename: pivot-build.json
           label: Build
@@ -152,7 +152,7 @@ jobs:
       - name: Create Go version badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ secrets.BADGES_GIST_ID }}
           filename: pivot-go-version.json
           label: Go
@@ -184,7 +184,7 @@ jobs:
       - name: Create license badge
         uses: schneegans/dynamic-badges-action@v1.6.0
         with:
-          auth: ${{ secrets.GITHUB_TOKEN }}
+          auth: ${{ secrets.GIST_TOKEN }}
           gistID: ${{ secrets.BADGES_GIST_ID }}
           filename: pivot-license.json
           label: License

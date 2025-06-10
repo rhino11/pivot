@@ -320,4 +320,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📚 [Documentation](https://github.com/rhino11/pivot/wiki)
 - 🐛 [Issue Tracker](https://github.com/rhino11/pivot/issues)
 - 💬 [Discussions](https://github.com/rhino11/pivot/discussions)
-# Testing badge fixes
