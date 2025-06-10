@@ -62,6 +62,7 @@ help:
 	@echo "  test-cleanup  - Cleanup test installations"
 	@echo "  test-cli      - Run comprehensive CLI test suite"
 	@echo "  test-security - Run security test suite"
+	@echo "  test-badges   - Test badge system locally"
 	@echo "  test-post-release - Run post-release validation tests"
 	@echo "  test-all      - Run all test suites (unit + CLI + security + E2E)"
 	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
@@ -271,6 +272,19 @@ test-security:
 	@echo "Running security test suite..."
 	@chmod +x ./scripts/security-test.sh
 	@./scripts/security-test.sh
+
+# Badge System Tests
+.PHONY: test-badges
+test-badges:
+	@echo "Testing badge system locally..."
+	@chmod +x ./scripts/test-badges.sh
+	@./scripts/test-badges.sh
+
+.PHONY: test-ci-badges
+test-ci-badges:
+	@echo "Simulating CI badge workflow..."
+	@chmod +x ./scripts/test-ci-badges.sh
+	@./scripts/test-ci-badges.sh
 
 # Post-Release Validation Tests
 .PHONY: test-post-release
