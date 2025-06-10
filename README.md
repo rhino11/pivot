@@ -1,9 +1,9 @@
-[![Build Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-build.json)](https://github.com/rhino11/pivot/actions)
-[![Coverage Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/6b163e8929917383d59754315852f901/raw/pivot-coverage.json)](https://github.com/rhino11/pivot/actions)
+[![Build Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/0a39d1979cd714d14836e9d6427d2eb9/raw/pivot-build.json)](https://github.com/rhino11/pivot/actions)
+[![Coverage Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/8466693b8eb4ca358099fabc6ed234e0/raw/pivot-coverage.json)](https://github.com/rhino11/pivot/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rhino11/pivot)](https://goreportcard.com/report/github.com/rhino11/pivot)
-[![Security Rating](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/02cf4d8ae9f5bb1b9911eb75beafeaf9/raw/pivot-security.json)](https://github.com/rhino11/pivot/security)
-[![Go Version](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-go-version.json)](https://golang.org)
-[![License](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-license.json)](https://opensource.org/licenses/MIT)
+[![Security Rating](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/a93cb6b503277dd460826517a831497e/raw/pivot-security.json)](https://github.com/rhino11/pivot/security)
+[![Go Version](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/0a39d1979cd714d14836e9d6427d2eb9/raw/pivot-go-version.json)](https://golang.org)
+[![License](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/0a39d1979cd714d14836e9d6427d2eb9/raw/pivot-license.json)](https://opensource.org/licenses/MIT)
 
 # Pivot CLI
 
