@@ -1,0 +1,11 @@
+# Nancy Ignore File
+# This file contains vulnerability IDs that are intentionally ignored
+# Each line should contain a vulnerability ID and a comment explaining why it's ignored
+# Format: CVE-YYYY-NNNN # Reason for ignoring
+
+# Add ignored vulnerabilities here with explanations
+# Example:
+# CVE-2021-12345 # False positive: vulnerability is in test dependencies only
+# CVE-2021-67890 # Accepted risk: vulnerability affects unused functionality
+
+# No vulnerabilities currently ignored

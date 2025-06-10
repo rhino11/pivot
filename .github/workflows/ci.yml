@@ -20,15 +20,179 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Run tests
-        run: go test -v ./...
+      - name: Run tests with coverage
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+          echo "Coverage: $COVERAGE%"
       - name: Run linter
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
+      - name: Create coverage badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.COVERAGE_GIST_ID }}
+          filename: pivot-coverage.json
+          label: Coverage
+          message: ${{ env.COVERAGE }}%
+          color: ${{ env.COVERAGE >= 80 && 'brightgreen' || env.COVERAGE >= 60 && 'yellow' || 'red' }}
+
+  cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Run CLI test suite
+        run: |
+          chmod +x ./scripts/test-cli.sh
+          ./scripts/test-cli.sh
+
+  security-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Install security tools
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Run security test suite
+        run: make test-security
+      - name: Parse security results
+        if: always()
+        run: |
+          # Check if security report exists and parse results
+          if [ -f "security-report.md" ]; then
+            # Count critical/high issues from gosec report
+            if [ -f "gosec-report.json" ]; then
+              CRITICAL_ISSUES=$(jq -r '.Stats.files // 0' gosec-report.json 2>/dev/null || echo "0")
+              HIGH_ISSUES=$(jq -r '.Issues | length' gosec-report.json 2>/dev/null || echo "0")
+            else
+              CRITICAL_ISSUES=0
+              HIGH_ISSUES=0
+            fi
+            
+            # Determine security rating
+            TOTAL_ISSUES=$((CRITICAL_ISSUES + HIGH_ISSUES))
+            if [ $TOTAL_ISSUES -eq 0 ]; then
+              SECURITY_RATING="A"
+              SECURITY_COLOR="brightgreen"
+            elif [ $TOTAL_ISSUES -le 2 ]; then
+              SECURITY_RATING="B"
+              SECURITY_COLOR="green"
+            elif [ $TOTAL_ISSUES -le 5 ]; then
+              SECURITY_RATING="C"
+              SECURITY_COLOR="yellow"
+            else
+              SECURITY_RATING="D"
+              SECURITY_COLOR="red"
+            fi
+          else
+            SECURITY_RATING="Unknown"
+            SECURITY_COLOR="lightgrey"
+          fi
+          
+          echo "SECURITY_RATING=$SECURITY_RATING" >> $GITHUB_ENV
+          echo "SECURITY_COLOR=$SECURITY_COLOR" >> $GITHUB_ENV
+          echo "Security Rating: $SECURITY_RATING"
+      - name: Create security badge
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.SECURITY_GIST_ID }}
+          filename: pivot-security.json
+          label: Security
+          message: ${{ env.SECURITY_RATING }}
+          color: ${{ env.SECURITY_COLOR }}
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            security-report.md
+            gosec-report.json
+          retention-days: 30
+
+  badges:
+    runs-on: ubuntu-latest
+    needs: [test, cli-tests, security-tests]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create build status badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-build.json
+          label: Build
+          message: ${{ needs.test.result == 'success' && needs.cli-tests.result == 'success' && needs.security-tests.result == 'success' && 'passing' || 'failing' }}
+          color: ${{ needs.test.result == 'success' && needs.cli-tests.result == 'success' && needs.security-tests.result == 'success' && 'brightgreen' || 'red' }}
+      
+      - name: Get Go version from go.mod
+        id: go-version
+        run: |
+          GO_VERSION=$(grep "^go " go.mod | cut -d' ' -f2)
+          echo "version=$GO_VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Create Go version badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-go-version.json
+          label: Go
+          message: ${{ steps.go-version.outputs.version }}
+          color: 00ADD8
+      
+      - name: Check license file
+        id: license
+        run: |
+          if [ -f "LICENSE" ]; then
+            # Try to detect license type from LICENSE file
+            if grep -qi "MIT" LICENSE; then
+              LICENSE_TYPE="MIT"
+            elif grep -qi "Apache" LICENSE; then
+              LICENSE_TYPE="Apache-2.0"
+            elif grep -qi "BSD" LICENSE; then
+              LICENSE_TYPE="BSD"
+            elif grep -qi "GPL" LICENSE; then
+              LICENSE_TYPE="GPL"
+            else
+              LICENSE_TYPE="Custom"
+            fi
+          else
+            LICENSE_TYPE="None"
+          fi
+          echo "type=$LICENSE_TYPE" >> $GITHUB_OUTPUT
+          echo "License detected: $LICENSE_TYPE"
+      
+      - name: Create license badge
+        uses: schneegans/dynamic-badges-action@v1.6.0
+        with:
+          auth: ${{ secrets.GITHUB_TOKEN }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-license.json
+          label: License
+          message: ${{ steps.license.outputs.type }}
+          color: ${{ steps.license.outputs.type == 'MIT' && 'yellow' || steps.license.outputs.type == 'Apache-2.0' && 'blue' || steps.license.outputs.type == 'BSD' && 'orange' || steps.license.outputs.type == 'GPL' && 'green' || 'lightgrey' }}
 
   build:
-    needs: test
+    needs: [test, cli-tests, security-tests]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -420,6 +584,60 @@ jobs:
           path: |
             /tmp/homebrew-e2e-*.log
           retention-days: 7
+
+  post-release-validation:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+          
+      - name: Wait for release to be available
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Waiting for release $VERSION to be available..."
+          
+          max_attempts=20
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts: Checking release availability..."
+            
+            if curl -s -f "https://api.github.com/repos/rhino11/pivot/releases/tags/$VERSION" >/dev/null; then
+              echo "✅ Release is available"
+              break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Release not available after $max_attempts attempts"
+              exit 1
+            fi
+            
+            sleep 30
+            ((attempt++))
+          done
+      
+      - name: Run post-release validation
+        env:
+          TEST_VERSION: ${{ github.ref_name }}
+        run: |
+          chmod +x ./scripts/post-release-validation.sh
+          ./scripts/post-release-validation.sh $TEST_VERSION
+      
+      - name: Upload validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: post-release-validation-reports
+          path: |
+            binary-validation-report.md
+            checksums.txt
+          retention-days: 30
 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

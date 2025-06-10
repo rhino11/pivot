@@ -78,9 +78,9 @@ func NewRootCommand() *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("pivot version %s\n", version)
-			fmt.Printf("commit: %s\n", commit)
-			fmt.Printf("built: %s\n", date)
+			cmd.Printf("pivot version %s\n", version)
+			cmd.Printf("commit: %s\n", commit)
+			cmd.Printf("built: %s\n", date)
 		},
 	}
 

@@ -33,65 +33,6 @@ func TestRootCommand(t *testing.T) {
 	}
 }
 
-func TestSyncCommand(t *testing.T) {
-	// Create a test config file
-	configContent := `owner: testowner
-repo: testrepo
-token: testtoken123
-`
-	configFile := "config.yaml"
-	defer os.Remove(configFile)
-
-	err := os.WriteFile(configFile, []byte(configContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Also clean up any test database
-	defer os.Remove("pivot.db")
-
-	// Capture output
-	output := &bytes.Buffer{}
-
-	// Create a new root command for testing
-	cmd := NewRootCommand()
-	cmd.SetOut(output)
-	cmd.SetErr(output)
-
-	// Test sync command (this will fail due to invalid token, but we can test the command setup)
-	cmd.SetArgs([]string{"sync"})
-	err = cmd.Execute()
-
-	// We expect this to fail since we're using a fake token, but the command should be recognized
-	if err == nil {
-		t.Log("Sync command executed (may have failed due to fake token, which is expected)")
-	} else {
-		// Check if it's a network/auth error (expected) vs command not found (unexpected)
-		errorStr := err.Error()
-		if strings.Contains(errorStr, "unknown command") {
-			t.Errorf("Sync command not recognized: %v", err)
-		} else {
-			t.Logf("Sync command recognized but failed as expected (fake token): %v", err)
-		}
-	}
-}
-
-func TestVersionCommand(t *testing.T) {
-	// Test version command by checking it doesn't error and runs successfully
-	cmd := NewRootCommand()
-
-	// Test version command (not flag)
-	cmd.SetArgs([]string{"version"})
-	err := cmd.Execute()
-	if err != nil {
-		t.Fatalf("Expected no error for version command, got: %v", err)
-	}
-
-	// The version command prints directly to stdout via fmt.Printf
-	// For a more comprehensive test, we could redirect stdout, but this ensures the command works
-	t.Log("Version command executed successfully")
-}
-
 func TestInvalidCommand(t *testing.T) {
 	// Capture output
 	output := &bytes.Buffer{}
@@ -111,49 +52,6 @@ func TestInvalidCommand(t *testing.T) {
 	if !strings.Contains(err.Error(), "unknown command") {
 		t.Errorf("Expected 'unknown command' error, got: %v", err)
 	}
-}
-
-func TestInitCommand(t *testing.T) {
-	// Clean up any existing database and config files
-	defer os.Remove("pivot.db")
-	defer os.Remove("config.yml")
-	defer os.Remove("config.yaml")
-
-	// Create a test config file first to avoid interactive prompts
-	configContent := `owner: testowner
-repo: testrepo
-token: testtoken123
-database: pivot.db
-sync:
-  include_closed: true
-  batch_size: 100
-`
-	err := os.WriteFile("config.yml", []byte(configContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test config file: %v", err)
-	}
-
-	// Capture output
-	output := &bytes.Buffer{}
-
-	// Create a new root command for testing
-	cmd := NewRootCommand()
-	cmd.SetOut(output)
-	cmd.SetErr(output)
-
-	// Test init command
-	cmd.SetArgs([]string{"init"})
-	err = cmd.Execute()
-	if err != nil {
-		t.Fatalf("Expected no error for init command, got: %v", err)
-	}
-
-	// Check if database file was created
-	if _, err := os.Stat("pivot.db"); os.IsNotExist(err) {
-		t.Error("Expected database file to be created")
-	}
-
-	t.Log("Init command executed successfully")
 }
 
 func TestRun_Success(t *testing.T) {
@@ -223,58 +121,6 @@ func TestRun_InvalidCommand(t *testing.T) {
 
 	if !strings.Contains(stderrStr, "Error:") {
 		t.Errorf("Expected error message in stderr, got: %s", stderrStr)
-	}
-}
-
-// TestConfigCommand tests the config command
-func TestConfigCommand(t *testing.T) {
-	// Clean up
-	defer os.Remove("config.yml")
-
-	rootCmd := NewRootCommand()
-	rootCmd.SetArgs([]string{"config"})
-
-	// Capture stdout
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// Simulate user input for configuration
-	oldStdin := os.Stdin
-	pr, pw, _ := os.Pipe()
-	os.Stdin = pr
-
-	// Provide input for config setup
-	go func() {
-		defer pw.Close()
-		_, _ = pw.WriteString("testowner\n")     // GitHub owner
-		_, _ = pw.WriteString("testrepo\n")      // Repository name
-		_, _ = pw.WriteString("ghp_testtoken\n") // GitHub token
-		_, _ = pw.WriteString("\n")              // Database path (default)
-		_, _ = pw.WriteString("n\n")             // Include closed issues (no)
-		_, _ = pw.WriteString("\n")              // Batch size (default)
-	}()
-
-	err := rootCmd.Execute()
-
-	// Restore stdin/stdout
-	os.Stdin = oldStdin
-	w.Close()
-	os.Stdout = oldStdout
-
-	// Read output
-	go func() {
-		_, _ = io.ReadAll(r)
-	}()
-	r.Close()
-
-	if err != nil {
-		t.Errorf("Config command should not fail with valid input, got: %v", err)
-	}
-
-	// Verify config file was created
-	if _, err := os.Stat("config.yml"); os.IsNotExist(err) {
-		t.Error("Expected config.yml to be created")
 	}
 }
 

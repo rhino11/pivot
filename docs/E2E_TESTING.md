@@ -1,5 +1,7 @@
 # Homebrew E2E Testing Implementation
 
+> **Note**: This document covers Homebrew-specific E2E testing. For comprehensive testing documentation covering all test suites (CLI tests, security tests, post-release validation, etc.), see **[Comprehensive Testing Guide](COMPREHENSIVE_TESTING.md)**.
+
 ## Overview
 
 This document summarizes the comprehensive Homebrew End-to-End (E2E) testing implementation for the Pivot CLI project, addressing the need for automated validation of the complete Homebrew installation experience on macOS.

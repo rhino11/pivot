@@ -1,5 +1,7 @@
 # Release Automation Guide
 
+> **Related Documentation**: See **[Comprehensive Testing Guide](COMPREHENSIVE_TESTING.md)** for complete testing documentation including CLI tests, security tests, and post-release validation.
+
 This document describes the comprehensive release automation system for Pivot CLI.
 
 ## Overview

@@ -1,8 +1,9 @@
-[![Build Status](https://github.com/rhino11/pivot/workflows/Build%20and%20Release/badge.svg)](https://github.com/rhino11/pivot/actions)
-[![Coverage Status](https://img.shields.io/badge/coverage-80.6%25-green.svg)](https://github.com/rhino11/pivot/actions)
+[![Build Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-build.json)](https://github.com/rhino11/pivot/actions)
+[![Coverage Status](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/6b163e8929917383d59754315852f901/raw/pivot-coverage.json)](https://github.com/rhino11/pivot/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rhino11/pivot)](https://goreportcard.com/report/github.com/rhino11/pivot)
-[![Security Rating](https://img.shields.io/badge/security-A-brightgreen)](https://github.com/rhino11/pivot/security)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Security Rating](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/02cf4d8ae9f5bb1b9911eb75beafeaf9/raw/pivot-security.json)](https://github.com/rhino11/pivot/security)
+[![Go Version](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-go-version.json)](https://golang.org)
+[![License](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/rhino11/9eb5e7a714008e7e2c3a9ce48aeb7cd2/raw/pivot-license.json)](https://opensource.org/licenses/MIT)
 
 # Pivot CLI
 
@@ -291,6 +292,24 @@ The E2E test runs automatically in GitHub Actions on every tagged release:
 - **Platform**: macOS runner (latest)
 - **Timeout**: 10 minutes with proper error handling
 - **Artifacts**: Test logs uploaded for debugging
+
+## Testing
+
+The project includes comprehensive testing infrastructure covering unit tests, CLI tests, security scanning, E2E tests, and post-release validation.
+
+### Quick Test Commands
+```bash
+make test-all           # Run all test suites
+make test              # Unit tests
+make test-cli          # CLI command testing
+make test-security     # Security scanning
+make test-homebrew-e2e # Homebrew E2E testing
+```
+
+### Documentation
+- 📋 **[Comprehensive Testing Guide](docs/COMPREHENSIVE_TESTING.md)** - Complete testing documentation
+- 🧪 **[Homebrew E2E Testing](docs/E2E_TESTING.md)** - Homebrew-specific E2E testing
+- 🚀 **[Release Automation](docs/RELEASE_AUTOMATION.md)** - Release process and testing
 
 ## License
 

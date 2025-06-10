@@ -60,6 +60,10 @@ help:
 	@echo "  test-homebrew-e2e - Run Homebrew end-to-end test (macOS only)"
 	@echo "  test-homebrew-local - Test local build via Homebrew"
 	@echo "  test-cleanup  - Cleanup test installations"
+	@echo "  test-cli      - Run comprehensive CLI test suite"
+	@echo "  test-security - Run security test suite"
+	@echo "  test-post-release - Run post-release validation tests"
+	@echo "  test-all      - Run all test suites (unit + CLI + security + E2E)"
 	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
 
 # Dependencies
@@ -206,8 +210,41 @@ test-cleanup:
 	@echo "Cleaning up test installations..."
 	@./scripts/test-homebrew-e2e.sh --cleanup
 
+# CLI Test Suite
+.PHONY: test-cli
+test-cli:
+	@echo "Running comprehensive CLI test suite..."
+	@chmod +x ./scripts/test-cli.sh
+	@./scripts/test-cli.sh
+
+# Security Test Suite
+.PHONY: test-security
+test-security:
+	@echo "Running security test suite..."
+	@chmod +x ./scripts/security-test.sh
+	@./scripts/security-test.sh
+
+# Post-Release Validation Tests
+.PHONY: test-post-release
+test-post-release:
+	@echo "Running post-release validation tests..."
+	@chmod +x ./scripts/post-release-validation.sh
+	@./scripts/post-release-validation.sh
+
+# All Test Suites
+.PHONY: test-all
+test-all: test test-cli test-security test-e2e
+	@echo "✅ All test suites completed!"
+
 # Submit to Homebrew Core
 .PHONY: submit-homebrew-core
 submit-homebrew-core:
 	@echo "Submitting pivot to Homebrew Core..."
 	@./scripts/submit-to-homebrew-core.sh
+
+# Setup Dynamic Badges
+.PHONY: setup-badges
+setup-badges:
+	@echo "Setting up dynamic badges..."
+	@chmod +x ./scripts/setup-badges.sh
+	@./scripts/setup-badges.sh
