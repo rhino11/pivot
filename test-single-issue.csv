@@ -1,0 +1,2 @@
+title,state,priority,labels,body
+"Test CSV Import via Pivot CLI",open,high,"csv-import,test","This is a test issue created via CSV import using the Pivot CLI. This demonstrates the CSV import functionality working with real GitHub API integration."

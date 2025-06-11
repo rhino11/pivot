@@ -122,8 +122,14 @@ func TestCSVExportCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Change to temp directory for default file creation
 			oldDir, _ := os.Getwd()
-			defer os.Chdir(oldDir)
-			os.Chdir(tmpDir)
+			defer func() {
+				if err := os.Chdir(oldDir); err != nil {
+					t.Errorf("Failed to change back to original directory: %v", err)
+				}
+			}()
+			if err := os.Chdir(tmpDir); err != nil {
+				t.Fatalf("Failed to change to temp directory: %v", err)
+			}
 
 			// Capture output
 			var buf bytes.Buffer

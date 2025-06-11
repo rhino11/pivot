@@ -67,19 +67,34 @@ help:
 	@echo "  test-all      - Run all test suites (unit + CLI + security + E2E)"
 	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
 	@echo "  setup-badges  - Setup dynamic badges for repository"
-	@echo "  ci            - Run complete CI pipeline locally (deps + format + lint + test + security + build)"
+	@echo "  ci            - Run CI pipeline (matches GitHub Actions: deps + lint + test + cli + security + build)"
+	@echo "  ci-local      - Run local CI pipeline (includes formatting)"
 	@echo "  ci-full       - Run full CI pipeline with coverage, E2E tests, and multi-platform builds"
 	@echo "  ci-quick      - Run quick CI validation for development (format + lint + test + cli)"
 
-# CI Pipeline - Run complete CI pipeline locally
+# CI Pipeline - Match GitHub Actions workflow exactly
 .PHONY: ci
-ci: clean deps format lint test test-cli test-security build
+ci: clean deps lint test test-cli test-security build
 	@echo ""
 	@echo "🎉 CI Pipeline completed successfully!"
 	@echo "✅ Dependencies installed"
+	@echo "✅ Linting passed"
+	@echo "✅ Unit tests passed (with coverage)"
+	@echo "✅ CLI tests passed"
+	@echo "✅ Security tests passed"
+	@echo "✅ Build successful"
+	@echo ""
+	@echo "Ready for commit and push! 🚀"
+
+# Local CI Pipeline - Includes formatting for local development
+.PHONY: ci-local
+ci-local: clean deps format lint test test-cli test-security build
+	@echo ""
+	@echo "🎉 Local CI Pipeline completed successfully!"
+	@echo "✅ Dependencies installed"
 	@echo "✅ Code formatted"
 	@echo "✅ Linting passed"
-	@echo "✅ Unit tests passed"
+	@echo "✅ Unit tests passed (with coverage)"
 	@echo "✅ CLI tests passed"
 	@echo "✅ Security tests passed"
 	@echo "✅ Build successful"
