@@ -21,11 +21,12 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Run tests with coverage
+        id: coverage_info
         run: |
           go test -v -coverprofile=coverage.out -covermode=atomic ./...
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
-          echo "Coverage: $COVERAGE%"
+          COVERAGE_PERCENT=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          echo "value=${COVERAGE_PERCENT}" >> $GITHUB_OUTPUT
+          echo "Coverage: ${COVERAGE_PERCENT}%"
       - name: Run linter
         uses: golangci/golangci-lint-action@v3
         with:
@@ -38,8 +39,8 @@ jobs:
           gistID: ${{ secrets.COVERAGE_GIST_ID }}
           filename: pivot-coverage.json
           label: Coverage
-          message: ${{ env.COVERAGE }}%
-          color: ${{ env.COVERAGE >= 80 && 'brightgreen' || env.COVERAGE >= 60 && 'yellow' || 'red' }}
+          message: ${{ steps.coverage_info.outputs.value }}%
+          color: ${{ steps.coverage_info.outputs.value >= 80 && 'brightgreen' || steps.coverage_info.outputs.value >= 60 && 'yellow' || 'red' }}
 
   cli-tests:
     runs-on: ubuntu-latest
@@ -71,6 +72,7 @@ jobs:
         run: make test-security
       - name: Parse security results
         if: always()
+        id: security_results_parser
         run: |
           # Check if security report exists and parse results
           if [ -f "security-report.md" ]; then
@@ -103,8 +105,8 @@ jobs:
             SECURITY_COLOR="lightgrey"
           fi
           
-          echo "SECURITY_RATING=$SECURITY_RATING" >> $GITHUB_ENV
-          echo "SECURITY_COLOR=$SECURITY_COLOR" >> $GITHUB_ENV
+          echo "rating=$SECURITY_RATING" >> $GITHUB_OUTPUT
+          echo "color=$SECURITY_COLOR" >> $GITHUB_OUTPUT
           echo "Security Rating: $SECURITY_RATING"
       - name: Create security badge
         if: github.ref == 'refs/heads/main'
@@ -114,8 +116,8 @@ jobs:
           gistID: ${{ secrets.SECURITY_GIST_ID }}
           filename: pivot-security.json
           label: Security
-          message: ${{ env.SECURITY_RATING }}
-          color: ${{ env.SECURITY_COLOR }}
+          message: ${{ steps.security_results_parser.outputs.rating }}
+          color: ${{ steps.security_results_parser.outputs.color }}
       - name: Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
