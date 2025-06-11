@@ -31,16 +31,6 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-      - name: Create coverage badge
-        if: github.ref == 'refs/heads/main'
-        uses: schneegans/dynamic-badges-action@v1.6.0
-        with:
-          auth: ${{ secrets.GIST_TOKEN }}
-          gistID: ${{ secrets.COVERAGE_GIST_ID }}
-          filename: pivot-coverage.json
-          label: Coverage
-          message: ${{ steps.coverage_info.outputs.value }}%
-          color: ${{ steps.coverage_info.outputs.value >= 80 && 'brightgreen' || steps.coverage_info.outputs.value >= 60 && 'yellow' || 'red' }}
 
   cli-tests:
     runs-on: ubuntu-latest
@@ -70,54 +60,6 @@ jobs:
           go install honnef.co/go/tools/cmd/staticcheck@latest
       - name: Run security test suite
         run: make test-security
-      - name: Parse security results
-        if: always()
-        id: security_results_parser
-        run: |
-          # Check if security report exists and parse results
-          if [ -f "security-report.md" ]; then
-            # Count critical/high issues from gosec report
-            if [ -f "gosec-report.json" ]; then
-              CRITICAL_ISSUES=$(jq -r '.Stats.files // 0' gosec-report.json 2>/dev/null || echo "0")
-              HIGH_ISSUES=$(jq -r '.Issues | length' gosec-report.json 2>/dev/null || echo "0")
-            else
-              CRITICAL_ISSUES=0
-              HIGH_ISSUES=0
-            fi
-            
-            # Determine security rating
-            TOTAL_ISSUES=$((CRITICAL_ISSUES + HIGH_ISSUES))
-            if [ $TOTAL_ISSUES -eq 0 ]; then
-              SECURITY_RATING="A"
-              SECURITY_COLOR="brightgreen"
-            elif [ $TOTAL_ISSUES -le 2 ]; then
-              SECURITY_RATING="B"
-              SECURITY_COLOR="green"
-            elif [ $TOTAL_ISSUES -le 5 ]; then
-              SECURITY_RATING="C"
-              SECURITY_COLOR="yellow"
-            else
-              SECURITY_RATING="D"
-              SECURITY_COLOR="red"
-            fi
-          else
-            SECURITY_RATING="Unknown"
-            SECURITY_COLOR="lightgrey"
-          fi
-          
-          echo "rating=$SECURITY_RATING" >> $GITHUB_OUTPUT
-          echo "color=$SECURITY_COLOR" >> $GITHUB_OUTPUT
-          echo "Security Rating: $SECURITY_RATING"
-      - name: Create security badge
-        if: github.ref == 'refs/heads/main'
-        uses: schneegans/dynamic-badges-action@v1.6.0
-        with:
-          auth: ${{ secrets.GIST_TOKEN }}
-          gistID: ${{ secrets.SECURITY_GIST_ID }}
-          filename: pivot-security.json
-          label: Security
-          message: ${{ steps.security_results_parser.outputs.rating }}
-          color: ${{ steps.security_results_parser.outputs.color }}
       - name: Upload security reports
         if: always()
         uses: actions/upload-artifact@v4
