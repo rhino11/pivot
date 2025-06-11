@@ -42,3 +42,6 @@ config.yml
 # Build artifacts
 dist/
 nancy-vulnerability-report.txt
+
+# Local environment
+.vscode
