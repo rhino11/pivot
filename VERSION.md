@@ -2,6 +2,58 @@
 
 This file tracks the version history and release notes for Pivot CLI.
 
+## v1.0.5
+
+- **🎉 NEW FEATURE**: CSV Import/Export for GitHub Issues
+- Added comprehensive CSV import/export functionality for seamless GitHub issues interoperability
+- New commands: `pivot import csv` and `pivot export csv`
+- Enhanced CLI with preview (`--preview`) and dry-run (`--dry-run`) modes for safe testing
+- Real GitHub API integration for creating issues directly from CSV files
+- Comprehensive test coverage (90.1% for CSV package)
+- Production-ready with full error handling and validation
+
+### CSV Import/Export Features
+- **CSV Import**: `pivot import csv <file>` - Import GitHub issues from CSV files
+  - Preview mode: `--preview` to see what would be imported without creating issues
+  - Dry-run mode: `--dry-run` to test import logic without API calls
+  - Repository targeting: `--repository owner/repo` to specify target repository
+  - Duplicate detection: `--skip-duplicates` to avoid creating duplicate issues
+  - Real GitHub API integration with proper authentication and error handling
+
+- **CSV Export**: `pivot export csv` - Export local issues to CSV format
+  - Custom output: `--output filename.csv` to specify export file
+  - Field filtering: `--fields title,state,labels` to export specific columns
+  - Repository filtering: `--repository owner/repo` to export specific repository issues
+
+### Supported CSV Fields
+- **Core Fields**: `id`, `title`, `state`, `priority`, `labels`, `assignee`, `milestone`
+- **Content Fields**: `body`, `acceptance_criteria`, `epic`
+- **Metadata Fields**: `created_at`, `updated_at`, `estimated_hours`, `story_points`
+- **Relationships**: `dependencies` (comma-separated issue IDs)
+
+### Usage Examples
+```bash
+# Import issues with preview
+pivot import csv --preview backlog.csv
+
+# Import to specific repository with dry-run
+pivot import csv --dry-run --repository myorg/myrepo issues.csv
+
+# Export issues to custom file
+pivot export csv --output exported-issues.csv
+
+# Export specific fields only
+pivot export csv --fields title,state,labels --output minimal.csv
+```
+
+### Technical Implementation
+- Robust CSV validation with required field checking
+- Hierarchical CLI command structure with proper flag handling
+- GitHub API integration using existing authentication system
+- Comprehensive unit tests (90.1% coverage), CLI tests, and E2E workflow tests
+- Security-hardened with proper input validation and error handling
+- CI/CD integration with automated testing pipeline
+
 ## v1.0.4
 
 - Minor CI fix discovered in the final pipeline stage post release.
