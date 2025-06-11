@@ -4,7 +4,8 @@
 # =============================================
 # This script validates all binaries from a GitHub release across platforms
 
-set -e
+# Note: Not using 'set -e' here because we want to handle test failures gracefully
+# through the run_test framework
 
 # Colors for output
 RED='\033[0;31m'
@@ -171,6 +172,7 @@ verify_binary_integrity() {
 test_binary_functionality() {
     local binary_name="$1"
     local platform="$2"
+    local arch="$3"
     
     log_info "Testing functionality of $binary_name..."
     
@@ -196,7 +198,17 @@ test_binary_functionality() {
             log_info "Skipping Linux binary execution test (no Docker)"
             return 0
         fi
-    else
+    elif [ "$platform" = "darwin" ] && [ "$(uname -s)" = "Darwin" ]; then
+        # Check if we can run this architecture natively
+        local current_arch="$(uname -m)"
+        if [ "$current_arch" = "x86_64" ] && [ "$arch" = "arm64" ]; then
+            log_info "Skipping ARM64 binary execution test on Intel Mac"
+            return 0
+        elif [ "$current_arch" = "arm64" ] && [ "$arch" = "amd64" ]; then
+            # ARM64 Macs can usually run x86_64 binaries via Rosetta
+            log_info "Testing x86_64 binary on ARM64 Mac (Rosetta)"
+        fi
+        
         # Native execution
         log_info "Testing native execution..."
         
@@ -249,7 +261,7 @@ test_macos_binaries() {
         
         if download_binary "$platform" "$arch" ""; then
             if verify_binary_integrity "$binary_name"; then
-                if test_binary_functionality "$binary_name" "$platform"; then
+                if test_binary_functionality "$binary_name" "$platform" "$arch"; then
                     log_success "macOS $arch binary test passed"
                 else
                     log_error "macOS $arch binary functionality test failed"
@@ -280,7 +292,7 @@ test_linux_binaries() {
         
         if download_binary "$platform" "$arch" ""; then
             if verify_binary_integrity "$binary_name"; then
-                if test_binary_functionality "$binary_name" "$platform"; then
+                if test_binary_functionality "$binary_name" "$platform" "$arch"; then
                     log_success "Linux $arch binary test passed"
                 else
                     log_error "Linux $arch binary functionality test failed"
@@ -311,7 +323,7 @@ test_windows_binaries() {
         
         if download_binary "$platform" "$arch" ".exe"; then
             if verify_binary_integrity "$binary_name"; then
-                if test_binary_functionality "$binary_name" "$platform"; then
+                if test_binary_functionality "$binary_name" "$platform" "$arch"; then
                     log_success "Windows $arch binary test passed"
                 else
                     log_error "Windows $arch binary functionality test failed"
@@ -334,7 +346,9 @@ test_windows_binaries() {
 test_package_files() {
     log_step "Testing package files..."
     
-    local packages=("pivot_amd64.deb" "pivot.rb")
+    # Extract version number without 'v' prefix for DEB package name
+    local version_num="${VERSION#v}"
+    local packages=("pivot_${version_num}_amd64.deb" "pivot.rb")
     local issues=0
     
     for package in "${packages[@]}"; do
@@ -359,11 +373,15 @@ test_package_files() {
                     ;;
                 *.rb)
                     # Test Homebrew formula syntax
-                    if ruby -c "$package" &> /dev/null; then
-                        log_success "Homebrew formula syntax is valid"
+                    if command -v ruby &> /dev/null; then
+                        if ruby -c "$package" &> /dev/null; then
+                            log_success "Homebrew formula syntax is valid"
+                        else
+                            log_error "Homebrew formula syntax is invalid"
+                            issues=$((issues + 1))
+                        fi
                     else
-                        log_error "Homebrew formula syntax is invalid"
-                        issues=$((issues + 1))
+                        log_info "Ruby not available, skipping Homebrew formula validation"
                     fi
                     ;;
             esac
