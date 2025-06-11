@@ -1,6 +1,6 @@
 # Pivot CLI Security Report
 
-Generated on: Wed Jun 11 13:06:51 EDT 2025
+Generated on: Wed Jun 11 16:37:07 EDT 2025
 Go version: go version go1.24.4 darwin/amd64
 
 ## Tools Used

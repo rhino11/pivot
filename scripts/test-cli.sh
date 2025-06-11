@@ -64,12 +64,12 @@ main() {
     
     # Test binary compilation
     log_step "Testing binary compilation..."
-    if go build -o /tmp/pivot-test ./cmd/main.go; then
+    if go build -o /tmp/pivot-test-binary ./cmd/main.go; then
         log_success "Binary compilation successful"
         
         # Test basic commands
         log_step "Testing basic command functionality..."
-        if /tmp/pivot-test version &> /dev/null && /tmp/pivot-test help &> /dev/null; then
+        if /tmp/pivot-test-binary version &> /dev/null && /tmp/pivot-test-binary help &> /dev/null; then
             log_success "Basic commands work"
         else
             log_error "Basic commands failed"
@@ -77,7 +77,7 @@ main() {
         fi
         
         # Cleanup
-        rm -f /tmp/pivot-test
+        rm -f /tmp/pivot-test-binary
     else
         log_error "Binary compilation failed"
         return 1

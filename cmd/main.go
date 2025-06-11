@@ -28,21 +28,53 @@ func NewRootCommand() *cobra.Command {
 		Short: "Initialize configuration and local issues database",
 		Long:  `Initialize Pivot by creating a configuration file and setting up the local database.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Check if config file exists, if not, setup configuration
-			if _, err := os.Stat("config.yml"); os.IsNotExist(err) {
-				if _, err := os.Stat("config.yaml"); os.IsNotExist(err) {
-					fmt.Println("Setting up Pivot configuration...")
-					if err := internal.InitConfig(); err != nil {
-						return fmt.Errorf("config setup failed: %w", err)
+			// Check for import flag
+			importFile, _ := cmd.Flags().GetString("import")
+			multiProject, _ := cmd.Flags().GetBool("multi-project")
+
+			if importFile != "" {
+				// Import configuration from file
+				fmt.Printf("📥 Importing configuration from: %s\n", importFile)
+				if err := internal.ImportConfigFile(importFile); err != nil {
+					return fmt.Errorf("config import failed: %w", err)
+				}
+			} else {
+				// Check if config file exists, if not, setup configuration
+				if _, err := os.Stat("config.yml"); os.IsNotExist(err) {
+					if _, err := os.Stat("config.yaml"); os.IsNotExist(err) {
+						fmt.Println("Setting up Pivot configuration...")
+
+						if multiProject {
+							// Use new multi-project setup
+							if err := internal.InitMultiProjectConfig(); err != nil {
+								return fmt.Errorf("config setup failed: %w", err)
+							}
+						} else {
+							// Use legacy single-project setup
+							if err := internal.InitConfig(); err != nil {
+								return fmt.Errorf("config setup failed: %w", err)
+							}
+						}
 					}
 				}
 			}
 
-			// Then initialize the database
+			// Initialize the database
 			fmt.Println("Initializing local issues database...")
-			if err := internal.Init(); err != nil {
-				return fmt.Errorf("database init failed: %w", err)
+
+			// Try to load as multi-project config first
+			if _, err := internal.LoadMultiProjectConfig(); err == nil {
+				// Multi-project database initialization
+				if err := internal.InitMultiProjectDatabase(); err != nil {
+					return fmt.Errorf("multi-project database init failed: %w", err)
+				}
+			} else {
+				// Legacy single-project database initialization
+				if err := internal.Init(); err != nil {
+					return fmt.Errorf("database init failed: %w", err)
+				}
 			}
+
 			fmt.Println("✓ Initialized local issues database.")
 
 			fmt.Println()
@@ -56,9 +88,78 @@ func NewRootCommand() *cobra.Command {
 		Use:   "config",
 		Short: "Configure Pivot settings",
 		Long:  `Set up or modify Pivot configuration interactively.`,
+	}
+
+	var configSetupCmd = &cobra.Command{
+		Use:   "setup",
+		Short: "Interactive configuration setup",
+		Long:  `Set up Pivot configuration interactively with multi-project support.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := internal.InitConfig(); err != nil {
-				return fmt.Errorf("config setup failed: %w", err)
+			multiProject, _ := cmd.Flags().GetBool("multi-project")
+
+			if multiProject {
+				if err := internal.InitMultiProjectConfig(); err != nil {
+					return fmt.Errorf("multi-project config setup failed: %w", err)
+				}
+			} else {
+				if err := internal.InitConfig(); err != nil {
+					return fmt.Errorf("config setup failed: %w", err)
+				}
+			}
+			return nil
+		},
+	}
+
+	var configShowCmd = &cobra.Command{
+		Use:   "show",
+		Short: "Show current configuration",
+		Long:  `Display the current Pivot configuration.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Try to load as multi-project config first
+			if err := internal.ShowMultiProjectConfig(); err != nil {
+				// Fall back to legacy config display
+				config, err := internal.LoadConfig()
+				if err != nil {
+					return fmt.Errorf("failed to load config: %w", err)
+				}
+
+				fmt.Println("📋 Current Configuration (Legacy Format)")
+				fmt.Println("========================================")
+				fmt.Println()
+				fmt.Printf("Owner: %s\n", config.Owner)
+				fmt.Printf("Repository: %s\n", config.Repo)
+				fmt.Printf("Database: %s\n", config.Database)
+				if config.Token != "" {
+					fmt.Printf("Token: %s***\n", config.Token[:8])
+				} else {
+					fmt.Println("Token: (not set)")
+				}
+			}
+			return nil
+		},
+	}
+
+	var configAddProjectCmd = &cobra.Command{
+		Use:   "add-project",
+		Short: "Add a new project to multi-project configuration",
+		Long:  `Add a new GitHub project to your multi-project configuration.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := internal.AddProject(); err != nil {
+				return fmt.Errorf("failed to add project: %w", err)
+			}
+			return nil
+		},
+	}
+
+	var configImportCmd = &cobra.Command{
+		Use:   "import <file>",
+		Short: "Import configuration from file",
+		Long:  `Import Pivot configuration from a YAML file.`,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			filePath := args[0]
+			if err := internal.ImportConfigFile(filePath); err != nil {
+				return fmt.Errorf("config import failed: %w", err)
 			}
 			return nil
 		},
@@ -68,9 +169,28 @@ func NewRootCommand() *cobra.Command {
 		Use:   "sync",
 		Short: "Sync issues between upstream and local database",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := internal.Sync(); err != nil {
-				return fmt.Errorf("sync failed: %w", err)
+			project, _ := cmd.Flags().GetString("project")
+
+			// Try to load multi-project config first
+			if _, err := internal.LoadMultiProjectConfig(); err == nil {
+				if err := internal.SyncMultiProject(project); err != nil {
+					return fmt.Errorf("multi-project sync failed: %w", err)
+				}
+			} else {
+				// Check if it's a config file error (file exists but invalid)
+				if _, statErr := os.Stat("config.yml"); statErr == nil {
+					return fmt.Errorf("sync failed: %w", err)
+				}
+				if _, statErr := os.Stat("config.yaml"); statErr == nil {
+					return fmt.Errorf("sync failed: %w", err)
+				}
+
+				// Fall back to legacy single-project sync
+				if err := internal.Sync(); err != nil {
+					return fmt.Errorf("sync failed: %w", err)
+				}
 			}
+
 			fmt.Println("✓ Sync complete.")
 			return nil
 		},
@@ -273,6 +393,14 @@ Examples:
 		},
 	}
 
+	// Add flags to commands
+	initCmd.Flags().String("import", "", "Import configuration from file")
+	initCmd.Flags().Bool("multi-project", false, "Use multi-project configuration setup")
+
+	configSetupCmd.Flags().Bool("multi-project", false, "Use multi-project configuration setup")
+
+	syncCmd.Flags().String("project", "", "Sync specific project (format: owner/repo)")
+
 	// Add flags to CSV import command
 	csvImportCmd.Flags().Bool("preview", false, "Preview the import without creating issues")
 	csvImportCmd.Flags().Bool("dry-run", false, "Show what would be imported without making changes")
@@ -286,6 +414,11 @@ Examples:
 	csvExportCmd.Flags().String("repository", "", "Source GitHub repository (e.g., owner/repo)")
 
 	// Build command hierarchy
+	configCmd.AddCommand(configSetupCmd)
+	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configAddProjectCmd)
+	configCmd.AddCommand(configImportCmd)
+
 	importCmd.AddCommand(csvImportCmd)
 	exportCmd.AddCommand(csvExportCmd)
 
