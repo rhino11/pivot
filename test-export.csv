@@ -1,3 +1,0 @@
-id,title,state,priority,labels,assignee,milestone,created_at,updated_at,body,estimated_hours,story_points,epic,dependencies,acceptance_criteria
-1,Sample Issue 1,open,high,"bug,urgent",,,,,This is a sample issue for testing CSV export,,,,,
-2,Sample Issue 2,closed,medium,feature,,,,,Another sample issue,,,,,

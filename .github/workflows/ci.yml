@@ -448,6 +448,33 @@ jobs:
             ((attempt++))
           done
       
+      - name: Wait for Homebrew tap to be updated
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Waiting for Homebrew tap to be updated with version $VERSION..."
+          
+          max_attempts=20
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts: Checking Homebrew tap formula..."
+            
+            # Check if the formula in the tap has been updated to the new version
+            if curl -s "https://raw.githubusercontent.com/rhino11/homebrew-tap/main/Formula/pivot.rb" | grep -q "version \"${VERSION#v}\""; then
+              echo "✅ Homebrew tap updated with version $VERSION"
+              break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "⚠️  Homebrew tap not updated after $max_attempts attempts"
+              echo "This might be due to authentication issues or manual update required"
+              echo "Proceeding with test anyway - test may install older version"
+            fi
+            
+            sleep 60
+            ((attempt++))
+          done
+      
       - name: Run Homebrew E2E Test
         env:
           TEST_VERSION: ${{ github.ref_name }}
