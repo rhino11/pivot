@@ -52,6 +52,12 @@ func loadConfig() (*Config, error) {
 	return &cfg, nil
 }
 
+// LoadConfig loads the configuration file and returns the config
+// This is a public wrapper around the private loadConfig function
+func LoadConfig() (*Config, error) {
+	return loadConfig()
+}
+
 func Sync() error {
 	cfg, err := loadConfig()
 	if err != nil {

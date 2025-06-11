@@ -53,6 +53,15 @@ main() {
         return 1
     fi
     
+    # Run CSV CLI tests
+    log_step "Running CSV CLI tests..."
+    if TESTING=true go test -v -timeout=30s ./cmd/csv_cli_test.go ./cmd/main.go; then
+        log_success "CSV CLI tests passed"
+    else
+        log_error "CSV CLI tests failed"
+        return 1
+    fi
+    
     # Test binary compilation
     log_step "Testing binary compilation..."
     if go build -o /tmp/pivot-test ./cmd/main.go; then
