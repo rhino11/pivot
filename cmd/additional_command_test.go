@@ -76,7 +76,7 @@ func TestConfigSetupMultiProject(t *testing.T) {
 	os.Stdin = r
 	go func() {
 		defer w.Close()
-		io.Copy(w, input)
+		_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 	}()
 
 	output := &bytes.Buffer{}
@@ -132,7 +132,7 @@ projects:
 	os.Stdin = r
 	go func() {
 		defer w.Close()
-		io.Copy(w, input)
+		_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 	}()
 
 	output := &bytes.Buffer{}

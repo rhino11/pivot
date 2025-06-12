@@ -275,7 +275,9 @@ func TestFindGitDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		_ = os.Chdir(originalDir) // #nosec G104 - test cleanup, ignore error
+	}()
 
 	err = os.Chdir(tempDir)
 	if err != nil {
@@ -329,7 +331,9 @@ func TestFindGitDirectory_NotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
-	defer os.Chdir(originalDir)
+	defer func() {
+		_ = os.Chdir(originalDir) // #nosec G104 - test cleanup, ignore error
+	}()
 
 	err = os.Chdir(tempDir)
 	if err != nil {

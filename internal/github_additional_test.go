@@ -43,7 +43,7 @@ func TestFetchIssues_AdditionalCoverage(t *testing.T) {
 			w.Header().Set("X-RateLimit-Remaining", "4999")
 
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(mockIssues)
+			_ = json.NewEncoder(w).Encode(mockIssues) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 
@@ -112,11 +112,10 @@ func TestCreateIssue_CoverageImprovements(t *testing.T) {
 			}
 
 			if request.Title != "Test Issue" {
-				t.Errorf("Expected title 'Test Issue', got '%s'", request.Title)
-			}
+				t.Errorf("Expected title 'Test Issue', got '%s'", request.Title)		}
 
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(mockResponse)
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(mockResponse) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 
@@ -143,7 +142,7 @@ func TestCreateIssue_CoverageImprovements(t *testing.T) {
 	t.Run("HTTPErrorHandling", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(`{"message": "Validation Failed", "errors": [{"field": "title", "code": "missing"}]}`))
+			_, _ = w.Write([]byte(`{"message": "Validation Failed", "errors": [{"field": "title", "code": "missing"}]}`)) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 
@@ -160,7 +159,7 @@ func TestCreateIssue_CoverageImprovements(t *testing.T) {
 	t.Run("InvalidJSONResponse", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("invalid json response"))
+			_, _ = w.Write([]byte("invalid json response")) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 

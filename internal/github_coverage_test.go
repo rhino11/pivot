@@ -18,7 +18,7 @@ func TestFetchIssues_ErrorHandling(t *testing.T) {
 			t.Run(fmt.Sprintf("Status%d", statusCode), func(t *testing.T) {
 				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(statusCode)
-					w.Write([]byte(`{"message": "Error"}`))
+					_, _ = w.Write([]byte(`{"message": "Error"}`)) // #nosec G104 - test helper, ignore error
 				}))
 				defer server.Close()
 
@@ -77,7 +77,7 @@ func TestCreateIssue_ErrorHandling(t *testing.T) {
 	t.Run("NonCreatedStatusCode", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Validation Failed"}`))
+			_, _ = w.Write([]byte(`{"message": "Validation Failed"}`)) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 
@@ -114,7 +114,7 @@ func TestCreateIssue_ErrorHandling(t *testing.T) {
 	t.Run("JSONUnmarshalError", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"invalid": json syntax`)) // Invalid JSON
+			_, _ = w.Write([]byte(`{"invalid": json syntax`)) // #nosec G104 - test helper, ignore error (Invalid JSON)
 		}))
 		defer server.Close()
 
@@ -158,7 +158,7 @@ func TestCreateIssue_SuccessfulResponse(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id": 123, "number": 456, "title": "Test Issue", "state": "open", "html_url": "https://github.com/owner/repo/issues/456"}`))
+		_, _ = w.Write([]byte(`{"id": 123, "number": 456, "title": "Test Issue", "state": "open", "html_url": "https://github.com/owner/repo/issues/456"}`)) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
@@ -200,7 +200,7 @@ func TestFetchIssues_SuccessfulResponse(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`[{"id": 1, "number": 1, "title": "Test Issue", "body": "Test body", "state": "open", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z", "closed_at": "", "labels": [{"name": "bug"}], "assignees": [{"login": "user1"}]}]`))
+		_, _ = w.Write([]byte(`[{"id": 1, "number": 1, "title": "Test Issue", "body": "Test body", "state": "open", "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z", "closed_at": "", "labels": [{"name": "bug"}], "assignees": [{"login": "user1"}]}]`)) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
