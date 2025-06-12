@@ -340,7 +340,7 @@ func TestInitMultiProjectConfig_AdditionalCoverage(t *testing.T) {
 		// Make the directory readonly after we're in it (this should work)
 		defer func() {
 			// Restore permissions and change back
-			_ = os.Chmod(".", 0755) // #nosec G104 - test cleanup, ignore error
+			_ = os.Chmod(".", 0755)  // #nosec G104 - test cleanup, ignore error
 			_ = os.Chdir(originalWd) // #nosec G104 - test cleanup, ignore error
 		}()
 

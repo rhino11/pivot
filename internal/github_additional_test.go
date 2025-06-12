@@ -112,10 +112,11 @@ func TestCreateIssue_CoverageImprovements(t *testing.T) {
 			}
 
 			if request.Title != "Test Issue" {
-				t.Errorf("Expected title 'Test Issue', got '%s'", request.Title)		}
+				t.Errorf("Expected title 'Test Issue', got '%s'", request.Title)
+			}
 
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(mockResponse) // #nosec G104 - test helper, ignore error
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(mockResponse) // #nosec G104 - test helper, ignore error
 		}))
 		defer server.Close()
 

@@ -18,10 +18,10 @@ func TestFetchIssuesEdgeCases(t *testing.T) {
 			if !strings.Contains(r.URL.RawQuery, "per_page=100") {
 				t.Error("Expected per_page=100 parameter")
 			}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		// Response with issues that have multiple labels and assignees
-		_, _ = w.Write([]byte(`[ // #nosec G104 - test helper, ignore error
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			// Response with issues that have multiple labels and assignees
+			_, _ = w.Write([]byte(`[ // #nosec G104 - test helper, ignore error
 				{
 					"id": 1,
 					"number": 1,
