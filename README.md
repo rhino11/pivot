@@ -354,6 +354,21 @@ The project follows Test-Driven Development (TDD) principles:
 3. **Refactor**: Improve code quality while maintaining test coverage
 4. **Security Validation**: All code passes security scans with `gosec`
 
+### Homebrew Tap Automatic Updates
+
+For maintainers: The release workflow automatically updates the [Homebrew tap](https://github.com/rhino11/homebrew-tap) when new versions are released. To enable this:
+
+1. **Create a Personal Access Token** with `repo` permissions
+2. **Add it as `HOMEBREW_PAT` secret** in repository settings
+3. **Test the setup** using `./scripts/test-homebrew-pat.sh <token>`
+
+See [HOMEBREW_TAP_SETUP.md](docs/HOMEBREW_TAP_SETUP.md) for detailed instructions.
+
+If automatic updates fail, use the manual fallback:
+```bash
+./scripts/update-homebrew-tap.sh v1.1.0
+```
+
 ### Project Structure
 
 ```
