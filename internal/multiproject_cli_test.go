@@ -157,7 +157,7 @@ func TestInitMultiProjectConfig(t *testing.T) {
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err := InitMultiProjectConfig()
@@ -182,7 +182,7 @@ func TestInitMultiProjectConfig(t *testing.T) {
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err := InitMultiProjectConfig()
@@ -201,7 +201,7 @@ func TestInitMultiProjectConfig(t *testing.T) {
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err := InitMultiProjectConfig()
@@ -461,7 +461,7 @@ projects:
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err := AddProject()
@@ -506,7 +506,7 @@ projects:
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err := AddProject()
@@ -600,7 +600,7 @@ projects:
 		os.Stdin = r
 		go func() {
 			defer w.Close()
-			io.Copy(w, input)
+			_, _ = io.Copy(w, input) // #nosec G104 - test helper, ignore error
 		}()
 
 		err = ImportConfigFile(importFile)
@@ -749,22 +749,5 @@ func TestAddProjectEdgeCases(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "failed to load config") {
 		t.Errorf("Expected config load error, got: %v", err)
-	}
-}
-
-// mockStdin replaces os.Stdin with the provided string input for testing
-func mockStdin(input string) func() {
-	oldStdin := os.Stdin
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	go func() {
-		defer w.Close()
-		w.Write([]byte(input))
-	}()
-
-	return func() {
-		os.Stdin = oldStdin
-		r.Close()
 	}
 }

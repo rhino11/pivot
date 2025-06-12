@@ -402,7 +402,7 @@ func TestCreateIssue_Success(t *testing.T) {
 		// Send success response
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(mockResponse)
+		_ = json.NewEncoder(w).Encode(mockResponse) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
@@ -438,7 +438,7 @@ func TestCreateIssue_Success(t *testing.T) {
 func TestCreateIssue_InvalidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("invalid json"))
+		_, _ = w.Write([]byte("invalid json")) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
@@ -457,7 +457,7 @@ func TestCreateIssue_InvalidJSON(t *testing.T) {
 func TestCreateIssue_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "Bad credentials"}`))
+		_, _ = w.Write([]byte(`{"message": "Bad credentials"}`)) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
@@ -498,6 +498,7 @@ func TestCreateIssue_MarshalError(t *testing.T) {
 	// so we'll test the actual function behavior
 	if err != nil && !strings.Contains(err.Error(), "failed to marshal request") {
 		// This is fine - the function should either succeed or fail with marshal error
+		t.Logf("CreateIssue error: %v", err)
 	}
 }
 
@@ -510,7 +511,7 @@ func TestCreateIssue_EmptyToken(t *testing.T) {
 			t.Errorf("Expected empty token to result in 'token' or 'token ', got '%s'", auth)
 		}
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"message": "Bad credentials"}`))
+		_, _ = w.Write([]byte(`{"message": "Bad credentials"}`)) // #nosec G104 - test helper, ignore error
 	}))
 	defer server.Close()
 
@@ -527,7 +528,7 @@ func TestCreateIssue_CompleteRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var request CreateIssueRequest
-		json.Unmarshal(body, &request)
+		_ = json.Unmarshal(body, &request) // #nosec G104 - test helper, ignore error
 
 		// Verify all fields are present
 		if request.Title != "Complete Test Issue" {
@@ -547,7 +548,7 @@ func TestCreateIssue_CompleteRequest(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(CreateIssueResponse{
+		_ = json.NewEncoder(w).Encode(CreateIssueResponse{ // #nosec G104 - test helper, ignore error
 			ID:      789,
 			Number:  100,
 			Title:   request.Title,
