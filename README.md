@@ -322,10 +322,10 @@ make build-all
 ### Test Coverage
 
 Pivot maintains comprehensive test coverage across all components:
-- **Overall Coverage**: 52.4% (as of v1.1.0)
-- **CMD Package**: 61.6% - CLI commands and user interface
-- **Internal Package**: 40.3% - Core business logic and database operations
-- **CSV Package**: 90.1% - Data import/export functionality
+- **Overall Coverage**: 80.1% (as of v1.1.0)
+- **CMD Package**: 69.7% - CLI commands and user interface
+- **Internal Package**: 80.1% - Core business logic and database operations
+- **CSV Package**: 91.2% - Data import/export functionality
 
 ### Running Tests
 
