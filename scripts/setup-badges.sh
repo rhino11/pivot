@@ -99,6 +99,16 @@ main() {
     echo "SECURITY_GIST_ID = $SECURITY_GIST_ID"
     echo "BADGES_GIST_ID = $BADGES_GIST_ID"
     echo
+    echo "📊 Additional Required Secret for Schneegans Dynamic Badges:"
+    echo "You need to create a GitHub Personal Access Token with 'gist' scope:"
+    echo "  1. Go to GitHub → Settings → Developer settings → Personal access tokens"
+    echo "  2. Generate new token (classic) with 'gist' scope"
+    echo "  3. Add to repository secrets as:"
+    echo "     GIST_SECRET = your-personal-access-token"
+    echo
+    echo "💡 Alternative: The workflow will fallback to GITHUB_TOKEN if GIST_SECRET is not available,"
+    echo "   but it may have limited permissions for gist updates."
+    echo
     
     log_info "📝 README.md Update"
     echo "Replace the badge URLs in README.md with:"

@@ -18,10 +18,81 @@ The first `pivot` release validates issue synchronization, local configuration m
 ## Features
 
 - 🔄 **Bidirectional Sync**: Sync GitHub issues to local SQLite database
+- 🗂️ **Multi-Project Support**: Manage multiple GitHub repositories from a single installation
 - 🛠️ **Offline Support**: Work with issues even without internet connectivity
+- 📊 **CSV Import/Export**: Import/export issues to/from CSV files with GitHub API integration
 - 🚀 **AI-Ready**: Designed for future AI/GenAI integration
 - 📦 **Multi-Platform**: Available for Windows, macOS, and Linux
-- 🔧 **Simple Configuration**: Easy setup with YAML config
+- 🔧 **Flexible Configuration**: Support both single-project and multi-project setups
+- 🎯 **Git Integration**: Automatic project detection from Git repositories
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        Pivot CLI Architecture                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
+│  │   CLI       │    │   GitHub    │    │    CSV      │             │
+│  │ Commands    │◄──►│     API     │◄──►│ Import/     │             │
+│  │             │    │Integration  │    │  Export     │             │
+│  └─────────────┘    └─────────────┘    └─────────────┘             │
+│         │                   │                   │                   │
+│         ▼                   ▼                   ▼                   │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                Configuration Layer                          │   │
+│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │   │
+│  │  │Single-Proj  │     │Multi-Project│     │Config Import│   │   │
+│  │  │   Config    │◄───►│   Config    │◄───►│  /Export    │   │   │
+│  │  │             │     │             │     │             │   │   │
+│  │  └─────────────┘     └─────────────┘     └─────────────┘   │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│         │                                                           │
+│         ▼                                                           │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                  Database Layer                             │   │
+│  │                                                             │   │
+│  │  Central DB: ~/.pivot/                                      │   │
+│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │   │
+│  │  │  projects   │────►│   issues    │◄───►│  Migration  │   │   │
+│  │  │   table     │     │   table     │     │   System    │   │   │
+│  │  │             │     │(project_id) │     │             │   │   │
+│  │  └─────────────┘     └─────────────┘     └─────────────┘   │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│         │                                                           │
+│         ▼                                                           │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                Git Integration Layer                        │   │
+│  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐   │   │
+│  │  │Git Remote   │     │Project Auto │     │  Path       │   │   │
+│  │  │ Detection   │────►│ Detection   │────►│ Resolution  │   │   │
+│  │  │             │     │             │     │             │   │   │
+│  │  └─────────────┘     └─────────────┘     └─────────────┘   │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                     Data Flow Diagram                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  GitHub APIs ◄─────────┐                                           │
+│      ▲                 │                                           │
+│      │                 ▼                                           │
+│  ┌───────┐    ┌─────────────┐    ┌─────────────┐                  │
+│  │ Sync  │◄──►│    Pivot    │◄──►│    CSV      │                  │
+│  │Process│    │  Database   │    │   Files     │                  │
+│  └───────┘    │(SQLite)     │    └─────────────┘                  │
+│      ▲        └─────────────┘                                      │
+│      │               ▲                                             │
+│      │               │                                             │
+│  ┌───────┐    ┌─────────────┐                                     │
+│  │Multi- │    │   Config    │                                     │
+│  │Project│◄──►│ Management  │                                     │
+│  │Filter │    │             │                                     │
+│  └───────┘    └─────────────┘                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ## Installation
 
@@ -82,9 +153,53 @@ Download the appropriate binary for your platform from the [releases page](https
 
 ## Usage
 
-### Initial Setup
+### Quick Start Examples
 
-1. Create a `config.yaml` file in your project directory:
+#### Single Project Setup (Simple)
+```bash
+# In your Git repository directory
+pivot init                    # Auto-detects project from Git remote
+pivot sync                    # Sync all issues
+```
+
+#### Multi-Project Setup (Recommended)
+```bash
+# Set up multi-project configuration
+pivot init --multi-project
+
+# Add multiple projects interactively
+pivot config add-project
+
+# Sync specific project
+pivot sync --project myorg/myrepo
+
+# Sync all configured projects
+pivot sync
+```
+
+#### CSV Workflow
+```bash
+# Export current issues to CSV
+pivot export csv --output issues.csv
+
+# Preview CSV import without creating issues
+pivot import csv --preview new-issues.csv
+
+# Import issues from CSV file
+pivot import csv new-issues.csv
+```
+
+### Detailed Setup
+
+#### Option 1: Interactive Setup (Recommended)
+```bash
+pivot config setup           # Guided multi-project setup
+pivot init                   # Initialize database
+pivot sync                   # Start syncing
+```
+
+#### Option 2: Manual Configuration
+Create a `config.yaml` file in your project directory:
 ```yaml
 owner: your-github-username-or-org
 repo: your-repo-name
@@ -103,18 +218,35 @@ pivot sync
 
 ### Commands
 
-- `pivot init` - Initialize the local issues database
+#### Core Commands
+- `pivot init` - Initialize the local issues database (single-project mode)
+- `pivot init --multi-project` - Initialize with multi-project support
+- `pivot init --import <file>` - Initialize by importing configuration from file
 - `pivot sync` - Sync issues between GitHub and local database
+- `pivot sync --project owner/repo` - Sync specific project only
 - `pivot version` - Show version information
 - `pivot help` - Show help information
 
+#### Configuration Management
+- `pivot config setup` - Interactive configuration setup
+- `pivot config show` - Display current configuration
+- `pivot config add-project` - Add new project to multi-project setup
+- `pivot config import <file>` - Import configuration from external file
+
+#### Data Import/Export
+- `pivot import csv <file>` - Import GitHub issues from CSV file
+- `pivot import csv --preview <file>` - Preview CSV import without creating issues
+- `pivot import csv --dry-run <file>` - Test import logic without API calls
+- `pivot export csv` - Export local issues to CSV file
+- `pivot export csv --output <file>` - Export to specific file
+
 ### Configuration
 
-The `config.yaml` file contains your GitHub repository data, including secrets like the token `pivot` uses to access various API endpoints. The command `pivot init` ensures the config is populated, and subsequent commands won't function unless there is a valid `config.yaml`.
+Pivot supports both single-project and multi-project configurations. The configuration file contains your GitHub repository data, including access tokens for API endpoints.
 
-There is a template `config.example.yaml` included in the versioned code. When you run `pivot init`, the actual `config.yaml` is generated. The `config.yaml` file is excluded from `git` tracking in `.gitignore`.
+#### Single-Project Configuration (Legacy)
 
-The `config.yaml` file supports the following options:
+For single repository management, use the traditional `config.yaml` format:
 
 ```yaml
 # GitHub repository details
@@ -133,6 +265,39 @@ sync:
   include_closed: true    # Include closed issues (default: true)
   batch_size: 100        # Number of issues to fetch per request (default: 100)
 ```
+
+#### Multi-Project Configuration (Recommended)
+
+For managing multiple repositories, use the enhanced multi-project format:
+
+```yaml
+global:
+  # Central database location (supports ~ expansion)
+  database: "~/.pivot/issues.db"
+  # Global GitHub token (can be overridden per project)
+  token: "ghp_your_global_token_here"
+
+projects:
+  - owner: "your-org"
+    repo: "first-repo"
+    path: "/path/to/local/repo"  # Optional: local filesystem path
+    
+  - owner: "your-org" 
+    repo: "second-repo"
+    token: "ghp_project_specific_token"  # Optional: project-specific token
+    
+  - owner: "other-org"
+    repo: "third-repo"
+```
+
+#### Setup Methods
+
+1. **Interactive Setup**: Run `pivot config setup` for guided configuration
+2. **Import from File**: Use `pivot init --import config.yaml` to import existing config
+3. **Auto-Detection**: Run `pivot init` in a Git repository for automatic project detection
+4. **Multi-Project Migration**: Existing single-project setups are automatically migrated
+
+**Note**: The `config.yaml` file is excluded from Git tracking for security.
 
 ## Building from Source
 
@@ -154,9 +319,56 @@ make build-all
 
 ## Development
 
+### Test Coverage
+
+Pivot maintains comprehensive test coverage across all components:
+- **Overall Coverage**: 52.4% (as of v1.1.0)
+- **CMD Package**: 61.6% - CLI commands and user interface
+- **Internal Package**: 40.3% - Core business logic and database operations
+- **CSV Package**: 90.1% - Data import/export functionality
+
 ### Running Tests
+
 ```bash
+# Run all tests
 go test ./...
+
+# Run tests with coverage
+make coverage
+
+# Run specific test suites
+make test          # Unit tests only
+make test-cli      # CLI integration tests
+make test-security # Security and vulnerability tests
+
+# Full CI pipeline
+make ci            # Complete CI/CD validation
+```
+
+### Development Workflow
+
+The project follows Test-Driven Development (TDD) principles:
+
+1. **Write Tests First**: New features start with comprehensive test cases
+2. **Implement Functionality**: Code to pass the tests
+3. **Refactor**: Improve code quality while maintaining test coverage
+4. **Security Validation**: All code passes security scans with `gosec`
+
+### Project Structure
+
+```
+pivot/
+├── cmd/                    # CLI entry points and command implementations
+├── internal/              # Core business logic (not exported)
+│   ├── csv/              # CSV import/export functionality
+│   ├── *_test.go         # Comprehensive test suites
+│   ├── config.go         # Configuration management
+│   ├── db.go             # Database operations
+│   ├── multiproject*.go  # Multi-project support
+│   └── sync.go           # GitHub synchronization
+├── scripts/              # Development and release automation
+├── docs/                 # Technical documentation
+└── test/e2e/            # End-to-end testing suites
 ```
 
 ### Linting
@@ -171,7 +383,46 @@ go fmt ./...
 
 ## Database Schema
 
-Issues are stored in a local SQLite database with the following schema:
+Pivot uses SQLite for local data storage with different schemas depending on configuration mode:
+
+### Multi-Project Schema (v1.1.0+)
+
+The enhanced multi-project schema supports managing multiple repositories:
+
+```sql
+-- Projects table stores repository configurations
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner TEXT NOT NULL,
+    repo TEXT NOT NULL,
+    path TEXT,                    -- Local filesystem path (optional)
+    token TEXT,                   -- Project-specific token (optional)
+    database_path TEXT,           -- Database location (optional)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(owner, repo)
+);
+
+-- Issues table with project associations
+CREATE TABLE issues (
+    github_id INTEGER PRIMARY KEY,
+    project_id INTEGER NOT NULL,  -- Foreign key to projects table
+    number INTEGER,
+    title TEXT,
+    body TEXT,
+    state TEXT,
+    labels TEXT,                  -- JSON array of label names
+    assignees TEXT,               -- JSON array of assignee usernames
+    created_at TEXT,
+    updated_at TEXT,
+    closed_at TEXT,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+```
+
+### Legacy Single-Project Schema
+
+For backward compatibility, single-project configurations use the original schema:
 
 ```sql
 CREATE TABLE issues (
@@ -188,15 +439,70 @@ CREATE TABLE issues (
 );
 ```
 
+**Migration**: Existing single-project databases are automatically migrated to multi-project format when upgrading.
+
 ## Roadmap
 
+### ✅ Completed (v1.1.0)
+- [x] **Multi-Project Support** - Manage multiple GitHub repositories from single installation
+- [x] **CSV Import/Export** - Full CSV integration with GitHub API
+- [x] **Database Migration** - Seamless upgrade from single to multi-project
+- [x] **Git Integration** - Automatic project detection from Git remotes
+- [x] **Enhanced CLI** - Comprehensive command structure with help and validation
+
+### 🚧 In Progress
+- [ ] **CI Enhancement Features** - Advanced pipeline management and dogfooding improvements
+- [ ] **Model Context Protocol (MCP) Server** - AI assistant integration for project management
+
+### 🔮 Future Features
 - [ ] **Two-way sync** - Push local changes back to GitHub
-- [ ] **AI Integration** - GenAI-powered project planning and insights
+- [ ] **AI Integration** - GenAI-powered project planning and insights  
 - [ ] **Advanced Filtering** - Query and filter issues with SQL-like syntax
 - [ ] **Team Collaboration** - Multi-user support with conflict resolution
 - [ ] **Custom Fields** - Add custom metadata to issues
 - [ ] **Reporting** - Generate project reports and analytics
 - [ ] **Plugin System** - Extensible architecture for custom integrations
+- [ ] **Web Interface** - Browser-based issue management dashboard
+
+## Troubleshooting
+
+### Common Issues
+
+#### Configuration Not Found
+```bash
+# Error: config.yaml not found
+pivot config setup           # Set up new configuration
+# OR
+pivot init --import config.yaml  # Import existing configuration
+```
+
+#### Database Migration Issues
+```bash
+# Error: database schema mismatch
+# Backup your database first, then:
+pivot init                   # Re-initialize with migration
+```
+
+#### Multi-Project vs Single-Project Mode
+```bash
+# Check current configuration type
+pivot config show
+
+# Migrate from single to multi-project
+pivot init --multi-project   # Automatically migrates existing data
+```
+
+#### GitHub API Rate Limits
+```bash
+# Use project-specific tokens to increase rate limits
+pivot config add-project     # Add token per project
+```
+
+### Getting Help
+
+- **Documentation**: Check the `docs/` directory for detailed guides
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/rhino11/pivot/issues)
+- **Discussions**: Join conversations on [GitHub Discussions](https://github.com/rhino11/pivot/discussions)
 
 ## Contributing
 

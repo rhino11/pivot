@@ -2,6 +2,37 @@
 
 This file tracks the version history and release notes for Pivot CLI.
 
+## v1.1.0
+
+- **🎉 NEW FEATURE**: Multi-Project Support
+- Enhanced pivot CLI to support managing multiple GitHub projects from a single installation
+- New multi-project database structure with central storage in `~/.pivot/` directory
+- Enhanced CLI commands with multi-project capabilities:
+  - `pivot init --multi-project` - Set up multi-project configuration
+  - `pivot config setup` - Interactive multi-project setup
+  - `pivot config add-project` - Add new projects to existing configuration
+  - `pivot config import` - Import configuration from external files
+  - `pivot sync --project owner/repo` - Sync specific projects
+- Git repository auto-detection for seamless project setup
+- Backward compatibility with existing single-project configurations
+- Database migration system for upgrading existing installations
+- Enhanced test coverage: 52.4% overall (61.6% cmd, 40.3% internal, 90.1% CSV)
+
+### Multi-Project Features
+- **Central Database Storage**: All project data stored in `~/.pivot/` with automatic directory creation
+- **Project-Specific Tokens**: Support for per-project GitHub tokens with global fallback
+- **Git Integration**: Automatic project detection from Git remotes for streamlined setup
+- **Configuration Import/Export**: Import existing configurations and merge with current setup
+- **Database Migration**: Seamless upgrade from single-project to multi-project structure
+- **Project Filtering**: Sync specific projects using `--project` flag
+
+### Technical Improvements
+- New multi-project database schema with `projects` table and foreign key relationships
+- Enhanced error handling and validation for multi-project scenarios
+- Comprehensive test suite with Test-Driven Development approach
+- Security compliance with proper `#nosec` annotations for code scanning
+- Full CI/CD pipeline validation with all quality gates passing
+
 ## v1.0.5
 
 - **🎉 NEW FEATURE**: CSV Import/Export for GitHub Issues

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -255,5 +256,255 @@ projects:
 	project := config.Projects[0]
 	if project.Owner != "imported" || project.Repo != "project" {
 		t.Errorf("Imported project incorrect: %+v", project)
+	}
+}
+
+// TestFindGitDirectory tests the findGitDirectory function
+func TestFindGitDirectory(t *testing.T) {
+	// Create a temporary directory structure with .git
+	tempDir := t.TempDir()
+	gitDir := filepath.Join(tempDir, ".git")
+
+	err := os.Mkdir(gitDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create .git directory: %v", err)
+	}
+
+	// Change to the temp directory
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	// Test finding .git directory
+	foundGitDir, err := findGitDirectory()
+	if err != nil {
+		t.Fatalf("findGitDirectory failed: %v", err)
+	}
+
+	// Resolve symlinks for proper comparison on macOS
+	expectedGitDir, _ := filepath.EvalSymlinks(gitDir)
+	foundGitDir, _ = filepath.EvalSymlinks(foundGitDir)
+
+	if foundGitDir != expectedGitDir {
+		t.Errorf("Expected git directory '%s', got '%s'", expectedGitDir, foundGitDir)
+	}
+
+	// Test from subdirectory
+	subDir := filepath.Join(tempDir, "subdir")
+	err = os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+
+	err = os.Chdir(subDir)
+	if err != nil {
+		t.Fatalf("Failed to change to subdirectory: %v", err)
+	}
+
+	foundGitDir, err = findGitDirectory()
+	if err != nil {
+		t.Fatalf("findGitDirectory failed from subdirectory: %v", err)
+	}
+
+	// Resolve symlinks for proper comparison
+	foundGitDir, _ = filepath.EvalSymlinks(foundGitDir)
+	if foundGitDir != expectedGitDir {
+		t.Errorf("Expected git directory '%s' from subdirectory, got '%s'", expectedGitDir, foundGitDir)
+	}
+}
+
+// TestFindGitDirectory_NotFound tests findGitDirectory when no .git directory exists
+func TestFindGitDirectory_NotFound(t *testing.T) {
+	// Create a temporary directory without .git
+	tempDir := t.TempDir()
+
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get current directory: %v", err)
+	}
+	defer os.Chdir(originalDir)
+
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to change to temp directory: %v", err)
+	}
+
+	_, err = findGitDirectory()
+	if err == nil {
+		t.Error("Expected error when .git directory not found, got nil")
+	}
+
+	if !strings.Contains(err.Error(), ".git directory not found") {
+		t.Errorf("Expected '.git directory not found' error, got: %v", err)
+	}
+}
+
+// TestParseGitRemoteOrigin tests the parseGitRemoteOrigin function
+func TestParseGitRemoteOrigin(t *testing.T) {
+	testCases := []struct {
+		name      string
+		url       string
+		owner     string
+		repo      string
+		shouldErr bool
+	}{
+		{
+			name:  "HTTPS URL",
+			url:   "https://github.com/owner/repo.git",
+			owner: "owner",
+			repo:  "repo",
+		},
+		{
+			name:  "SSH URL",
+			url:   "git@github.com:owner/repo.git",
+			owner: "owner",
+			repo:  "repo",
+		},
+		{
+			name:  "HTTPS URL without .git",
+			url:   "https://github.com/owner/repo",
+			owner: "owner",
+			repo:  "repo",
+		},
+		{
+			name:  "SSH URL without .git",
+			url:   "git@github.com:owner/repo",
+			owner: "owner",
+			repo:  "repo",
+		},
+		{
+			name:  "Complex owner and repo names",
+			url:   "https://github.com/complex-owner/complex-repo-name.git",
+			owner: "complex-owner",
+			repo:  "complex-repo-name",
+		},
+		{
+			name:      "Invalid URL",
+			url:       "not-a-git-url",
+			shouldErr: true,
+		},
+		{
+			name:      "Non-GitHub URL",
+			url:       "https://gitlab.com/owner/repo.git",
+			shouldErr: true,
+		},
+		{
+			name:      "Empty URL",
+			url:       "",
+			shouldErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a mock git config content
+			var gitConfig string
+			if tc.shouldErr && tc.url == "" {
+				gitConfig = ""
+			} else if tc.shouldErr {
+				gitConfig = fmt.Sprintf(`[remote "origin"]
+	url = %s`, tc.url)
+			} else {
+				gitConfig = fmt.Sprintf(`[core]
+	repositoryformatversion = 0
+[remote "origin"]
+	url = %s
+	fetch = +refs/heads/*:refs/remotes/origin/*`, tc.url)
+			}
+
+			owner, repo, err := parseGitRemoteOrigin(gitConfig)
+
+			if tc.shouldErr {
+				if err == nil {
+					t.Errorf("Expected error for URL '%s', got nil", tc.url)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("parseGitRemoteOrigin failed for URL '%s': %v", tc.url, err)
+			}
+
+			if owner != tc.owner {
+				t.Errorf("Expected owner '%s', got '%s'", tc.owner, owner)
+			}
+
+			if repo != tc.repo {
+				t.Errorf("Expected repo '%s', got '%s'", tc.repo, repo)
+			}
+		})
+	}
+}
+
+// TestSetDefaults tests the setDefaults function
+func TestSetDefaults(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    MultiProjectConfig
+		expected MultiProjectConfig
+	}{
+		{
+			name:  "Empty config gets defaults",
+			input: MultiProjectConfig{},
+			expected: MultiProjectConfig{
+				Global: GlobalConfig{
+					Database: "~/.pivot/pivot.db",
+				},
+			},
+		},
+		{
+			name: "Existing database preserved",
+			input: MultiProjectConfig{
+				Global: GlobalConfig{
+					Database: "/custom/path/db.sqlite",
+					Token:    "custom-token",
+				},
+			},
+			expected: MultiProjectConfig{
+				Global: GlobalConfig{
+					Database: "/custom/path/db.sqlite",
+					Token:    "custom-token",
+				},
+			},
+		},
+		{
+			name: "Empty database gets default",
+			input: MultiProjectConfig{
+				Global: GlobalConfig{
+					Database: "",
+					Token:    "preserve-token",
+				},
+			},
+			expected: MultiProjectConfig{
+				Global: GlobalConfig{
+					Database: "~/.pivot/pivot.db",
+					Token:    "preserve-token",
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.input
+			setDefaults(&result)
+
+			if result.Global.Database != tc.expected.Global.Database {
+				t.Errorf("Expected database '%s', got '%s'",
+					tc.expected.Global.Database, result.Global.Database)
+			}
+
+			if result.Global.Token != tc.expected.Global.Token {
+				t.Errorf("Expected token '%s', got '%s'",
+					tc.expected.Global.Token, result.Global.Token)
+			}
+		})
 	}
 }

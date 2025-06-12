@@ -42,7 +42,15 @@ Add the following secrets to your GitHub repository:
 COVERAGE_GIST_ID = your-coverage-gist-id
 SECURITY_GIST_ID = your-security-gist-id  
 BADGES_GIST_ID = your-badges-gist-id
+GIST_SECRET = your-github-personal-access-token
 ```
+
+**Creating GIST_SECRET:**
+1. Go to GitHub → Settings → Developer settings → Personal access tokens
+2. Generate new token (classic) with **'gist'** scope
+3. Copy the token and add it as `GIST_SECRET` repository secret
+
+> **Note**: The `GIST_SECRET` is required for the Schneegans dynamic-badges-action to update your gists. Without it, the action will fallback to `GITHUB_TOKEN` which may have limited permissions.
 
 ### 3. Update README Badge URLs
 
@@ -58,30 +66,29 @@ Replace the placeholder gist IDs in README.md with your actual gist IDs:
 
 ## How It Works
 
-### Coverage Badge
-- Runs `go test` with coverage
-- Parses total coverage percentage
-- Creates badge with color coding:
-  - Green (≥80%)
-  - Yellow (60-79%)  
-  - Red (<60%)
+### Automated Badge Updates (CI/CD)
 
-### Security Badge
-- Runs security tools (gosec, govulncheck, staticcheck)
-- Counts security issues
-- Assigns rating:
-  - **A**: 0 issues (green)
-  - **B**: 1-2 issues (green)
-  - **C**: 3-5 issues (yellow)
-  - **D**: 6+ issues (red)
+The badges are now automatically updated using the [Schneegans/dynamic-badges-action](https://github.com/Schneegans/dynamic-badges-action) whenever code is pushed to the main branch:
 
-### Build Status Badge
-- Monitors test, cli-tests, and security-tests jobs
-- Shows "passing" (green) or "failing" (red)
+1. **Coverage Badge**: Runs tests, calculates coverage percentage, and updates with color coding
+2. **Security Badge**: Runs security scans (gosec, govulncheck), counts issues, and assigns A-D rating
+3. **Build Status Badge**: Shows "passing" (green) or "failing" (red) based on test results
+4. **Go Version Badge**: Reads version from go.mod and displays it
+5. **License Badge**: Shows "MIT" license type
 
-### Go Version Badge
-- Reads version from go.mod
-- Shows current Go version (blue)
+### Badge Color Coding
+
+**Coverage Badge** (automatic color range):
+- Green (≥90%)
+- Yellow-Green (70-89%)  
+- Orange (50-69%)
+- Red (<50%)
+
+**Security Badge** (issue-based rating):
+- **A**: 0 issues (bright green)
+- **B**: 1-2 issues (green)
+- **C**: 3-5 issues (yellow)
+- **D**: 6+ issues (red)
 
 ### License Badge
 - Detects license from LICENSE file
@@ -91,6 +98,42 @@ Replace the placeholder gist IDs in README.md with your actual gist IDs:
   - BSD (orange)
   - GPL (green)
   - Custom/None (grey)
+
+## Testing
+
+### Local Testing
+
+Test your badge setup before pushing to production:
+
+```bash
+# Test the entire dynamic badges integration
+make test-dynamic-badges
+
+# Test traditional badge system (legacy)
+make test-badges
+
+# Simulate CI badge workflow  
+make test-ci-badges
+```
+
+The `test-dynamic-badges` script will:
+- Calculate current coverage and security metrics
+- Generate badge JSON files locally
+- Test gist access permissions
+- Show what badge data would be generated
+
+### Manual Testing
+
+You can also manually test badge generation:
+
+```bash
+# Run the test script directly
+./scripts/test-dynamic-badges.sh
+
+# Check generated badge JSON files
+ls /tmp/badge-test/
+cat /tmp/badge-test/coverage.json
+```
 
 ## Badge Updates
 

@@ -63,6 +63,7 @@ help:
 	@echo "  test-cli      - Run comprehensive CLI test suite"
 	@echo "  test-security - Run security test suite"
 	@echo "  test-badges   - Test badge system locally"
+	@echo "  test-dynamic-badges - Test Schneegans dynamic badges integration"
 	@echo "  test-post-release - Run post-release validation tests"
 	@echo "  test-all      - Run all test suites (unit + CLI + security + E2E)"
 	@echo "  submit-homebrew-core - Submit formula to Homebrew Core"
@@ -300,6 +301,12 @@ test-ci-badges:
 	@echo "Simulating CI badge workflow..."
 	@chmod +x ./scripts/test-ci-badges.sh
 	@./scripts/test-ci-badges.sh
+
+.PHONY: test-dynamic-badges
+test-dynamic-badges:
+	@echo "Testing Schneegans dynamic badges integration..."
+	@chmod +x ./scripts/test-dynamic-badges.sh
+	@./scripts/test-dynamic-badges.sh
 
 # Post-Release Validation Tests
 .PHONY: test-post-release

@@ -293,3 +293,230 @@ func TestDatabaseMigration(t *testing.T) {
 		t.Errorf("Expected legacy issue title, got '%s'", title)
 	}
 }
+
+// TestGetProjectID tests the getProjectID function
+func TestGetProjectID(t *testing.T) {
+	tempDB := "test_getprojectid.db"
+	defer os.Remove(tempDB)
+
+	db, err := sql.Open("sqlite3", tempDB)
+	if err != nil {
+		t.Fatalf("Failed to open test database: %v", err)
+	}
+	defer db.Close()
+
+	err = InitMultiProjectDB(db)
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+
+	// Create a test project
+	project := &ProjectConfig{
+		Owner:    "testowner",
+		Repo:     "testrepo",
+		Path:     "/test/path",
+		Token:    "token123",
+		Database: "",
+	}
+	projectID, err := CreateProject(db, project)
+	if err != nil {
+		t.Fatalf("Failed to create test project: %v", err)
+	}
+
+	// Test successful retrieval
+	retrievedID, err := getProjectID(db, "testowner", "testrepo")
+	if err != nil {
+		t.Fatalf("getProjectID failed: %v", err)
+	}
+
+	if retrievedID != projectID {
+		t.Errorf("Expected project ID %d, got %d", projectID, retrievedID)
+	}
+
+	// Test non-existent project
+	_, err = getProjectID(db, "nonexistent", "project")
+	if err == nil {
+		t.Error("Expected error for non-existent project, got nil")
+	}
+}
+
+// TestInitMultiProjectDBFromPath tests the InitMultiProjectDBFromPath function
+func TestInitMultiProjectDBFromPath(t *testing.T) {
+	// Test with temporary path
+	tempDir := t.TempDir()
+	dbPath := tempDir + "/test_multiproject.db"
+
+	db, err := InitMultiProjectDBFromPath(dbPath)
+	if err != nil {
+		t.Fatalf("InitMultiProjectDBFromPath failed: %v", err)
+	}
+	defer db.Close()
+
+	// Verify database was created and initialized
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='projects'").Scan(&count)
+	if err != nil {
+		t.Fatalf("Failed to check for projects table: %v", err)
+	}
+	if count != 1 {
+		t.Error("Expected projects table to exist")
+	}
+
+	// Test with home directory expansion
+	// We need to test path resolution separately as we can't write to actual home
+
+	// Test invalid path (should fail gracefully)
+	_, err = InitMultiProjectDBFromPath("/invalid/readonly/path/db.sqlite")
+	if err == nil {
+		t.Error("Expected error for invalid path, got nil")
+	}
+}
+
+// TestEnsureDirectoryExists tests the ensureDirectoryExists function
+func TestEnsureDirectoryExists(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Test creating nested directories
+	nestedPath := tempDir + "/nested/deep/path/file.db"
+	err := ensureDirectoryExists(nestedPath)
+	if err != nil {
+		t.Fatalf("ensureDirectoryExists failed: %v", err)
+	}
+
+	// Verify directory was created
+	dir := tempDir + "/nested/deep/path"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Error("Expected directory to be created")
+	}
+
+	// Test with file in current directory (no directory component)
+	err = ensureDirectoryExists("file.db")
+	if err != nil {
+		t.Fatalf("ensureDirectoryExists failed for current directory: %v", err)
+	}
+
+	// Test with existing directory
+	err = ensureDirectoryExists(nestedPath)
+	if err != nil {
+		t.Fatalf("ensureDirectoryExists failed for existing directory: %v", err)
+	}
+}
+
+// TestConvertIssueToDBIssue tests the ConvertIssueToDBIssue function
+func TestConvertIssueToDBIssue(t *testing.T) {
+	// Test with complete issue
+	issue := &Issue{
+		ID:        123,
+		Number:    456,
+		Title:     "Test Issue",
+		Body:      "Test body",
+		State:     "open",
+		CreatedAt: "2025-01-01T00:00:00Z",
+		UpdatedAt: "2025-01-02T00:00:00Z",
+		ClosedAt:  "2025-01-03T00:00:00Z",
+		Labels: []struct {
+			Name string `json:"name"`
+		}{
+			{Name: "bug"},
+			{Name: "enhancement"},
+			{Name: "high-priority"},
+		},
+		Assignees: []struct {
+			Login string `json:"login"`
+		}{
+			{Login: "user1"},
+			{Login: "user2"},
+		},
+	}
+
+	dbIssue := ConvertIssueToDBIssue(issue)
+
+	// Verify all fields are converted correctly
+	if dbIssue.ID != 123 {
+		t.Errorf("Expected ID 123, got %d", dbIssue.ID)
+	}
+	if dbIssue.Number != 456 {
+		t.Errorf("Expected Number 456, got %d", dbIssue.Number)
+	}
+	if dbIssue.Title != "Test Issue" {
+		t.Errorf("Expected title 'Test Issue', got '%s'", dbIssue.Title)
+	}
+	if dbIssue.Body != "Test body" {
+		t.Errorf("Expected body 'Test body', got '%s'", dbIssue.Body)
+	}
+	if dbIssue.State != "open" {
+		t.Errorf("Expected state 'open', got '%s'", dbIssue.State)
+	}
+	if dbIssue.Labels != "bug,enhancement,high-priority" {
+		t.Errorf("Expected labels 'bug,enhancement,high-priority', got '%s'", dbIssue.Labels)
+	}
+	if dbIssue.Assignees != "user1,user2" {
+		t.Errorf("Expected assignees 'user1,user2', got '%s'", dbIssue.Assignees)
+	}
+	if dbIssue.CreatedAt != "2025-01-01T00:00:00Z" {
+		t.Errorf("Expected CreatedAt '2025-01-01T00:00:00Z', got '%s'", dbIssue.CreatedAt)
+	}
+	if dbIssue.UpdatedAt != "2025-01-02T00:00:00Z" {
+		t.Errorf("Expected UpdatedAt '2025-01-02T00:00:00Z', got '%s'", dbIssue.UpdatedAt)
+	}
+	if dbIssue.ClosedAt != "2025-01-03T00:00:00Z" {
+		t.Errorf("Expected ClosedAt '2025-01-03T00:00:00Z', got '%s'", dbIssue.ClosedAt)
+	}
+}
+
+// TestConvertIssueToDBIssue_EmptyLabelsAndAssignees tests conversion with empty labels and assignees
+func TestConvertIssueToDBIssue_EmptyLabelsAndAssignees(t *testing.T) {
+	issue := &Issue{
+		ID:        789,
+		Number:    101,
+		Title:     "Simple Issue",
+		Body:      "",
+		State:     "closed",
+		CreatedAt: "2025-01-01T00:00:00Z",
+		UpdatedAt: "2025-01-01T00:00:00Z",
+		ClosedAt:  "",
+		Labels: []struct {
+			Name string `json:"name"`
+		}{},
+		Assignees: []struct {
+			Login string `json:"login"`
+		}{},
+	}
+
+	dbIssue := ConvertIssueToDBIssue(issue)
+
+	if dbIssue.Labels != "" {
+		t.Errorf("Expected empty labels, got '%s'", dbIssue.Labels)
+	}
+	if dbIssue.Assignees != "" {
+		t.Errorf("Expected empty assignees, got '%s'", dbIssue.Assignees)
+	}
+}
+
+// TestConvertIssueToDBIssue_SingleLabelAndAssignee tests conversion with single label and assignee
+func TestConvertIssueToDBIssue_SingleLabelAndAssignee(t *testing.T) {
+	issue := &Issue{
+		ID:     1,
+		Number: 1,
+		Title:  "Single",
+		Labels: []struct {
+			Name string `json:"name"`
+		}{
+			{Name: "solo-label"},
+		},
+		Assignees: []struct {
+			Login string `json:"login"`
+		}{
+			{Login: "solo-user"},
+		},
+	}
+
+	dbIssue := ConvertIssueToDBIssue(issue)
+
+	if dbIssue.Labels != "solo-label" {
+		t.Errorf("Expected labels 'solo-label', got '%s'", dbIssue.Labels)
+	}
+	if dbIssue.Assignees != "solo-user" {
+		t.Errorf("Expected assignees 'solo-user', got '%s'", dbIssue.Assignees)
+	}
+}

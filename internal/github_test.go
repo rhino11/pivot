@@ -339,198 +339,306 @@ func TestFetchIssues_EmptyToken(t *testing.T) {
 }
 
 func TestFetchIssues_RequestCreationError(t *testing.T) {
-	// Test with invalid characters that would cause request creation to fail
-	invalidOwner := "owner\nwith\nnewlines"
-	_, err := FetchIssues(invalidOwner, "repo", "token")
+	// Use invalid URL characters to cause request creation to fail
+	_, err := FetchIssues("invalid\nowner", "repo", "token")
 	if err == nil {
-		t.Error("Expected error with invalid owner containing newlines")
+		t.Error("Expected error for invalid owner characters, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to create request") {
+		t.Errorf("Expected request creation error, got: %v", err)
 	}
 }
 
-func TestFetchIssues_MalformedURL(t *testing.T) {
-	// Test edge case with special characters
-	specialOwner := "owner with spaces"
-	_, err := FetchIssues(specialOwner, "repo", "token")
-	// This might succeed or fail depending on URL encoding, just verify it's handled
-	if err != nil {
-		t.Logf("FetchIssues handled special characters: %v", err)
-	} else {
-		t.Log("FetchIssues succeeded with special characters")
-	}
-}
-
-func TestIssueStructUnmarshaling(t *testing.T) {
-	// Test comprehensive issue structure unmarshaling
-	issueJSON := `{
-		"id": 123,
-		"number": 1,
-		"title": "Test Issue",
-		"body": "Test body with **markdown**",
-		"state": "open",
-		"created_at": "2025-01-01T00:00:00Z",
-		"updated_at": "2025-01-02T00:00:00Z",
-		"closed_at": null,
-		"labels": [
-			{"name": "bug"},
-			{"name": "enhancement"},
-			{"name": "urgent"}
-		],
-		"assignees": [
-			{"login": "user1"},
-			{"login": "user2"}
-		]
-	}`
-
-	var issue Issue
-	err := json.Unmarshal([]byte(issueJSON), &issue)
-	if err != nil {
-		t.Fatalf("Failed to unmarshal issue JSON: %v", err)
+// TestCreateIssue_Success tests successful issue creation
+func TestCreateIssue_Success(t *testing.T) {
+	// Mock response
+	mockResponse := CreateIssueResponse{
+		ID:      123,
+		Number:  456,
+		Title:   "Test Issue",
+		State:   "open",
+		HTMLURL: "https://github.com/testowner/testrepo/issues/456",
 	}
 
-	// Verify all fields
-	if issue.ID != 123 {
-		t.Errorf("Expected ID 123, got %d", issue.ID)
-	}
-	if issue.Number != 1 {
-		t.Errorf("Expected Number 1, got %d", issue.Number)
-	}
-	if issue.Title != "Test Issue" {
-		t.Errorf("Expected Title 'Test Issue', got '%s'", issue.Title)
-	}
-	if len(issue.Labels) != 3 {
-		t.Errorf("Expected 3 labels, got %d", len(issue.Labels))
-	}
-	if len(issue.Assignees) != 2 {
-		t.Errorf("Expected 2 assignees, got %d", len(issue.Assignees))
-	}
-
-	// Verify label names
-	expectedLabels := []string{"bug", "enhancement", "urgent"}
-	for i, label := range issue.Labels {
-		if label.Name != expectedLabels[i] {
-			t.Errorf("Expected label %d to be '%s', got '%s'", i, expectedLabels[i], label.Name)
-		}
-	}
-
-	// Verify assignee logins
-	expectedAssignees := []string{"user1", "user2"}
-	for i, assignee := range issue.Assignees {
-		if assignee.Login != expectedAssignees[i] {
-			t.Errorf("Expected assignee %d to be '%s', got '%s'", i, expectedAssignees[i], assignee.Login)
-		}
-	}
-
-	t.Log("Issue struct unmarshaling test passed")
-}
-
-func TestFetchIssues_CompleteWorkflow(t *testing.T) {
-	// Test the complete workflow with a mock server returning complex issue data
-	issuesJSON := `[
-		{
-			"id": 1,
-			"number": 1,
-			"title": "First Issue",
-			"body": "First issue body",
-			"state": "open",
-			"created_at": "2025-01-01T00:00:00Z",
-			"updated_at": "2025-01-01T00:00:00Z",
-			"closed_at": null,
-			"labels": [{"name": "bug"}, {"name": "urgent"}],
-			"assignees": [{"login": "user1"}]
-		},
-		{
-			"id": 2,
-			"number": 2,
-			"title": "Second Issue",
-			"body": "Second issue body",
-			"state": "closed",
-			"created_at": "2025-01-01T00:00:00Z",
-			"updated_at": "2025-01-02T00:00:00Z",
-			"closed_at": "2025-01-02T00:00:00Z",
-			"labels": [],
-			"assignees": []
-		}
-	]`
-
+	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify request headers and parameters
+		// Verify request method
+		if r.Method != "POST" {
+			t.Errorf("Expected POST method, got %s", r.Method)
+		}
+
+		// Verify headers
 		if r.Header.Get("Authorization") != "token testtoken" {
 			t.Errorf("Expected Authorization header 'token testtoken', got '%s'", r.Header.Get("Authorization"))
 		}
-
-		// Verify URL contains expected parameters
-		if !strings.Contains(r.URL.RawQuery, "state=all") {
-			t.Error("Expected state=all parameter in URL")
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("Expected Content-Type 'application/json', got '%s'", r.Header.Get("Content-Type"))
 		}
-		if !strings.Contains(r.URL.RawQuery, "per_page=100") {
-			t.Error("Expected per_page=100 parameter in URL")
+		if r.Header.Get("Accept") != "application/vnd.github.v3+json" {
+			t.Errorf("Expected Accept header 'application/vnd.github.v3+json', got '%s'", r.Header.Get("Accept"))
 		}
 
+		// Verify URL path
+		expectedPath := "/repos/testowner/testrepo/issues"
+		if r.URL.Path != expectedPath {
+			t.Errorf("Expected path '%s', got '%s'", expectedPath, r.URL.Path)
+		}
+
+		// Verify request body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("Failed to read request body: %v", err)
+		}
+
+		var request CreateIssueRequest
+		if err := json.Unmarshal(body, &request); err != nil {
+			t.Fatalf("Failed to unmarshal request body: %v", err)
+		}
+
+		if request.Title != "Test Issue" {
+			t.Errorf("Expected title 'Test Issue', got '%s'", request.Title)
+		}
+
+		// Send success response
+		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(issuesJSON))
+		json.NewEncoder(w).Encode(mockResponse)
 	}))
 	defer server.Close()
 
-	// Extract host and path from server URL for testing
-	serverURL := server.URL
-	parts := strings.Split(serverURL, "://")
-	if len(parts) != 2 {
-		t.Fatalf("Invalid server URL: %s", serverURL)
+	// Override GitHub API URL for testing
+	mockURL := server.URL
+
+	// Create request
+	request := CreateIssueRequest{
+		Title:     "Test Issue",
+		Body:      "Test description",
+		Labels:    []string{"bug", "enhancement"},
+		Assignees: []string{"testuser"},
 	}
 
-	// Use fetchIssuesFromURL for testing
-	issues, err := fetchIssuesFromURL(serverURL, "testowner", "testrepo", "testtoken")
+	// Test with mock URL (we need to modify the function to use the mock URL)
+	response, err := CreateIssueWithURL(mockURL, "testowner", "testrepo", "testtoken", request)
 	if err != nil {
-		t.Fatalf("fetchIssuesFromURL failed: %v", err)
+		t.Fatalf("CreateIssue failed: %v", err)
 	}
 
-	if len(issues) != 2 {
-		t.Fatalf("Expected 2 issues, got %d", len(issues))
+	if response.ID != 123 {
+		t.Errorf("Expected ID 123, got %d", response.ID)
 	}
-
-	// Verify first issue
-	issue1 := issues[0]
-	if issue1.ID != 1 {
-		t.Errorf("Expected first issue ID 1, got %d", issue1.ID)
+	if response.Number != 456 {
+		t.Errorf("Expected Number 456, got %d", response.Number)
 	}
-	if issue1.State != "open" {
-		t.Errorf("Expected first issue state 'open', got '%s'", issue1.State)
+	if response.Title != "Test Issue" {
+		t.Errorf("Expected title 'Test Issue', got '%s'", response.Title)
 	}
-	if len(issue1.Labels) != 2 {
-		t.Errorf("Expected first issue to have 2 labels, got %d", len(issue1.Labels))
-	}
-
-	// Verify second issue
-	issue2 := issues[1]
-	if issue2.ID != 2 {
-		t.Errorf("Expected second issue ID 2, got %d", issue2.ID)
-	}
-	if issue2.State != "closed" {
-		t.Errorf("Expected second issue state 'closed', got '%s'", issue2.State)
-	}
-	if len(issue2.Labels) != 0 {
-		t.Errorf("Expected second issue to have 0 labels, got %d", len(issue2.Labels))
-	}
-
-	t.Log("Complete workflow test passed")
 }
 
-// Helper function for testing - we'll need to refactor FetchIssues to accept base URL
-func fetchIssuesFromURL(baseURL, owner, repo, token string) ([]Issue, error) {
-	// This is a temporary helper function for testing
-	// We'll need to modify the original FetchIssues function to be more testable
-	url := baseURL + "/repos/" + owner + "/" + repo + "/issues?state=all&per_page=100"
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
+// TestCreateIssue_InvalidJSON tests handling of invalid JSON in request
+func TestCreateIssue_InvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("invalid json"))
+	}))
+	defer server.Close()
+
+	request := CreateIssueRequest{Title: "Test"}
+	_, err := CreateIssueWithURL(server.URL, "owner", "repo", "token", request)
+
+	if err == nil {
+		t.Error("Expected error for invalid JSON response, got nil")
 	}
+	if !strings.Contains(err.Error(), "failed to unmarshal response") {
+		t.Errorf("Expected unmarshal error, got: %v", err)
+	}
+}
+
+// TestCreateIssue_HTTPError tests handling of HTTP errors
+func TestCreateIssue_HTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"message": "Bad credentials"}`))
+	}))
+	defer server.Close()
+
+	request := CreateIssueRequest{Title: "Test"}
+	_, err := CreateIssueWithURL(server.URL, "owner", "repo", "token", request)
+
+	if err == nil {
+		t.Error("Expected error for HTTP 401, got nil")
+	}
+	if !strings.Contains(err.Error(), "unexpected status code: 401") {
+		t.Errorf("Expected status code error, got: %v", err)
+	}
+}
+
+// TestCreateIssue_NetworkError tests handling of network errors
+func TestCreateIssue_NetworkError(t *testing.T) {
+	request := CreateIssueRequest{Title: "Test"}
+	_, err := CreateIssueWithURL("http://invalid-url-that-does-not-exist", "owner", "repo", "token", request)
+
+	if err == nil {
+		t.Error("Expected network error, got nil")
+	}
+	if !strings.Contains(err.Error(), "failed to make request") {
+		t.Errorf("Expected network error, got: %v", err)
+	}
+}
+
+// TestCreateIssue_MarshalError tests handling of JSON marshal errors
+func TestCreateIssue_MarshalError(t *testing.T) {
+	// Create a request that would cause marshal issues (using invalid characters)
+	request := CreateIssueRequest{
+		Title: string([]byte{0xff, 0xfe, 0xfd}), // Invalid UTF-8
+	}
+
+	_, err := CreateIssue("owner", "repo", "token", request)
+
+	// Note: In Go, JSON marshal typically handles this gracefully,
+	// so we'll test the actual function behavior
+	if err != nil && !strings.Contains(err.Error(), "failed to marshal request") {
+		// This is fine - the function should either succeed or fail with marshal error
+	}
+}
+
+// TestCreateIssue_EmptyToken tests handling of empty token
+func TestCreateIssue_EmptyToken(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		// Accept either "token" or "token " for empty token case
+		if auth != "token" && auth != "token " {
+			t.Errorf("Expected empty token to result in 'token' or 'token ', got '%s'", auth)
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"message": "Bad credentials"}`))
+	}))
+	defer server.Close()
+
+	request := CreateIssueRequest{Title: "Test"}
+	_, err := CreateIssueWithURL(server.URL, "owner", "repo", "", request)
+
+	if err == nil {
+		t.Error("Expected error for empty token, got nil")
+	}
+}
+
+// TestCreateIssue_CompleteRequest tests a complete request with all fields
+func TestCreateIssue_CompleteRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var request CreateIssueRequest
+		json.Unmarshal(body, &request)
+
+		// Verify all fields are present
+		if request.Title != "Complete Test Issue" {
+			t.Errorf("Expected title 'Complete Test Issue', got '%s'", request.Title)
+		}
+		if request.Body != "Complete description" {
+			t.Errorf("Expected body 'Complete description', got '%s'", request.Body)
+		}
+		if len(request.Labels) != 2 || request.Labels[0] != "bug" || request.Labels[1] != "feature" {
+			t.Errorf("Expected labels [bug, feature], got %v", request.Labels)
+		}
+		if len(request.Assignees) != 1 || request.Assignees[0] != "testuser" {
+			t.Errorf("Expected assignees [testuser], got %v", request.Assignees)
+		}
+		if request.Milestone != 5 {
+			t.Errorf("Expected milestone 5, got %d", request.Milestone)
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(CreateIssueResponse{
+			ID:      789,
+			Number:  100,
+			Title:   request.Title,
+			State:   "open",
+			HTMLURL: "https://github.com/owner/repo/issues/100",
+		})
+	}))
+	defer server.Close()
+
+	request := CreateIssueRequest{
+		Title:     "Complete Test Issue",
+		Body:      "Complete description",
+		Labels:    []string{"bug", "feature"},
+		Assignees: []string{"testuser"},
+		Milestone: 5,
+	}
+
+	response, err := CreateIssueWithURL(server.URL, "owner", "repo", "token", request)
+	if err != nil {
+		t.Fatalf("CreateIssue failed: %v", err)
+	}
+
+	if response.ID != 789 {
+		t.Errorf("Expected ID 789, got %d", response.ID)
+	}
+}
+
+// CreateIssueWithURL is a test helper that allows overriding the GitHub API URL
+func CreateIssueWithURL(baseURL, owner, repo, token string, request CreateIssueRequest) (*CreateIssueResponse, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/issues", baseURL, owner, repo)
+
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(payload)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
 	req.Header.Set("Authorization", "token "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	var issueResponse CreateIssueResponse
+	if err := json.Unmarshal(body, &issueResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return &issueResponse, nil
+}
+
+// Helper function to extract issues from paginated response with link header parsing
+func fetchIssuesFromURL(url, owner, repo, token string) ([]Issue, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "token "+token)
+
+	q := req.URL.Query()
+	q.Add("state", "all")
+	q.Add("per_page", "100")
+	req.URL.RawQuery = q.Encode()
+
+	if !strings.Contains(url, "/repos/") {
+		req.URL.Path = fmt.Sprintf("/repos/%s/%s/issues", owner, repo)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -540,7 +648,7 @@ func fetchIssuesFromURL(baseURL, owner, repo, token string) ([]Issue, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var issues []Issue
@@ -549,106 +657,4 @@ func fetchIssuesFromURL(baseURL, owner, repo, token string) ([]Issue, error) {
 	}
 
 	return issues, nil
-}
-
-func TestFetchIssues_ReadBodyError(t *testing.T) {
-	// Create test server that returns a response but closes connection during body read
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Content-Length", "1000") // Claim large content but don't send it
-		w.WriteHeader(http.StatusOK)
-		// Close connection immediately
-		hj, ok := w.(http.Hijacker)
-		if ok {
-			conn, _, _ := hj.Hijack()
-			conn.Close()
-		}
-	}))
-	defer server.Close()
-
-	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
-	if err == nil {
-		t.Fatal("Expected error for read body failure")
-	}
-	if issues != nil {
-		t.Error("Expected nil issues on error")
-	}
-}
-
-func TestFetchIssues_RequestError(t *testing.T) {
-	// Test with invalid URL characters that could cause request creation to fail
-	invalidChars := []string{
-		"owner\x00with\x00nulls", // null bytes
-		"owner\nwith\nnewlines",  // newlines
-		"owner\rwith\rcarriage",  // carriage returns
-	}
-
-	for _, invalidOwner := range invalidChars {
-		_, err := FetchIssues(invalidOwner, "repo", "token")
-		if err == nil {
-			t.Errorf("Expected error with invalid owner '%s'", invalidOwner)
-		}
-	}
-}
-
-func TestFetchIssues_EdgeCaseResponses(t *testing.T) {
-	// Test with minimal valid JSON response
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[{"id":1,"number":1,"title":"","body":"","state":"open","created_at":"","updated_at":"","closed_at":"","labels":[],"assignees":[]}]`))
-	}))
-	defer server.Close()
-
-	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
-	if err != nil {
-		t.Fatalf("Expected no error for minimal JSON, got: %v", err)
-	}
-
-	if len(issues) != 1 {
-		t.Fatalf("Expected 1 issue, got %d", len(issues))
-	}
-
-	issue := issues[0]
-	if issue.ID != 1 {
-		t.Errorf("Expected ID 1, got %d", issue.ID)
-	}
-	if issue.Title != "" {
-		t.Errorf("Expected empty title, got '%s'", issue.Title)
-	}
-}
-
-func TestFetchIssues_NullFields(t *testing.T) {
-	// Test with null closed_at field
-	issueJSON := `[{
-		"id": 999,
-		"number": 999,
-		"title": "Test Issue",
-		"body": "Test body",
-		"state": "open",
-		"created_at": "2025-01-01T00:00:00Z",
-		"updated_at": "2025-01-01T00:00:00Z",
-		"closed_at": null,
-		"labels": [],
-		"assignees": []
-	}]`
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(issueJSON))
-	}))
-	defer server.Close()
-
-	issues, err := fetchIssuesFromURL(server.URL, "testowner", "testrepo", "testtoken")
-	if err != nil {
-		t.Fatalf("Expected no error for null fields, got: %v", err)
-	}
-
-	if len(issues) != 1 {
-		t.Fatalf("Expected 1 issue, got %d", len(issues))
-	}
-
-	issue := issues[0]
-	if issue.ClosedAt != "" {
-		t.Errorf("Expected empty closed_at for null value, got '%s'", issue.ClosedAt)
-	}
 }

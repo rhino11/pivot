@@ -398,6 +398,10 @@ make test-security     # Security tests
 make test-homebrew-e2e # Homebrew E2E
 make test-post-release # Post-release validation
 
+# Badge system testing
+make test-badges           # Legacy badge system
+make test-dynamic-badges   # Schneegans dynamic badges integration
+
 # Development workflow
 make build             # Build binary
 make test-cli          # Test CLI functionality

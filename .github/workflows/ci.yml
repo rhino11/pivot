@@ -70,6 +70,155 @@ jobs:
             gosec-report.json
           retention-days: 30
 
+  update-badges:
+    runs-on: ubuntu-latest
+    needs: [test, cli-tests, security-tests]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      
+      - name: Get coverage percentage
+        id: coverage
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+          COVERAGE_PERCENT=$(go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+')
+          echo "percentage=${COVERAGE_PERCENT}" >> $GITHUB_OUTPUT
+          echo "Coverage: ${COVERAGE_PERCENT}%"
+      
+      - name: Get security rating
+        id: security
+        run: |
+          # Install security tools
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          
+          # Run security scan and count issues
+          SECURITY_ISSUES=0
+          
+          # Run gosec
+          if gosec -fmt json -out gosec-report.json ./... 2>/dev/null; then
+            GOSEC_ISSUES=$(jq '.Issues | length' gosec-report.json 2>/dev/null || echo "0")
+            SECURITY_ISSUES=$((SECURITY_ISSUES + GOSEC_ISSUES))
+          fi
+          
+          # Run govulncheck
+          if ! govulncheck ./... 2>/dev/null; then
+            SECURITY_ISSUES=$((SECURITY_ISSUES + 1))
+          fi
+          
+          # Determine security rating
+          if [ $SECURITY_ISSUES -eq 0 ]; then
+            RATING="A"
+            COLOR="brightgreen"
+          elif [ $SECURITY_ISSUES -le 2 ]; then
+            RATING="B"
+            COLOR="green"
+          elif [ $SECURITY_ISSUES -le 5 ]; then
+            RATING="C"
+            COLOR="yellow"
+          else
+            RATING="D"
+            COLOR="red"
+          fi
+          
+          echo "rating=${RATING}" >> $GITHUB_OUTPUT
+          echo "color=${COLOR}" >> $GITHUB_OUTPUT
+          echo "issues=${SECURITY_ISSUES}" >> $GITHUB_OUTPUT
+          echo "Security Rating: ${RATING} (${SECURITY_ISSUES} issues)"
+      
+      - name: Get Go version
+        id: go_version
+        run: |
+          GO_VERSION=$(grep "^go " go.mod | cut -d' ' -f2)
+          echo "version=${GO_VERSION}" >> $GITHUB_OUTPUT
+          echo "Go Version: ${GO_VERSION}"
+      
+      - name: Update Coverage Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.COVERAGE_GIST_ID }}
+          filename: pivot-coverage.json
+          label: Coverage
+          message: ${{ steps.coverage.outputs.percentage }}%
+          valColorRange: ${{ steps.coverage.outputs.percentage }}
+          maxColorRange: 90
+          minColorRange: 50
+      
+      - name: Update Security Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.SECURITY_GIST_ID }}
+          filename: pivot-security.json
+          label: Security
+          message: ${{ steps.security.outputs.rating }}
+          color: ${{ steps.security.outputs.color }}
+      
+      - name: Update Build Status Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-build.json
+          label: Build
+          message: passing
+          color: brightgreen
+      
+      - name: Update Go Version Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-go-version.json
+          label: Go
+          message: ${{ steps.go_version.outputs.version }}
+          color: 00ADD8
+      
+      - name: Update License Badge
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-license.json
+          label: License
+          message: MIT
+          color: yellow
+
+  update-failure-badges:
+    runs-on: ubuntu-latest
+    needs: [test, cli-tests, security-tests]
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Update Build Status Badge (Failed)
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.BADGES_GIST_ID }}
+          filename: pivot-build.json
+          label: Build
+          message: failing
+          color: red
+      
+      - name: Update Security Badge (Failed)
+        if: needs.security-tests.result == 'failure'
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET || github.token }}
+          gistID: ${{ secrets.SECURITY_GIST_ID }}
+          filename: pivot-security.json
+          label: Security
+          message: failing
+          color: red
+
   build:
     needs: [test, cli-tests, security-tests]
     runs-on: ${{ matrix.os }}
