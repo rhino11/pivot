@@ -1,7 +1,7 @@
 # Pivot CLI Security Report
 
-Generated on: Thu Jun 12 11:45:29 EDT 2025
-Go version: go version go1.24.4 darwin/amd64
+Generated on: Sat 21 Jun 2025 04:53:43 PM EDT
+Go version: go version go1.23.10 linux/amd64
 
 ## Tools Used
 - **gosec**: Go security checker - Static analysis for security issues
