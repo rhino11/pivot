@@ -43,6 +43,7 @@ help:
 	@echo "  check-go      - Check if Go is installed and install if missing"
 	@echo "  deps          - Install Go dependencies"
 	@echo "  fix-go        - Troubleshoot and fix common Go issues"
+	@echo "  check-gosec   - Check if gosec is installed and install if missing"
 	@echo "  test          - Run tests"
 	@echo "  lint          - Run Go linter"
 	@echo "  coverage      - Generate test coverage report"
@@ -148,7 +149,7 @@ check-go:
 			$(MAKE) install-go; \
 		else \
 			GO_VERSION=$$(go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo "unknown"); \
-			REQUIRED_VERSION="1.21"; \
+			REQUIRED_VERSION="1.23"; \
 			echo "✅ Go is installed: go$$GO_VERSION"; \
 			if ! $(MAKE) check-go-version GO_VERSION=$$GO_VERSION REQUIRED_VERSION=$$REQUIRED_VERSION; then \
 				echo "⚠️  Go version $$GO_VERSION may be incompatible with this project (requires ≥$$REQUIRED_VERSION)"; \
@@ -160,10 +161,13 @@ check-go:
 
 .PHONY: install-go
 install-go:
-	@echo "📦 Installing Go..."
-	@if command -v apt-get >/dev/null 2>&1; then \
-		echo "📦 Using apt-get to install Go..."; \
-		sudo apt-get update -qq && sudo apt-get install -y golang-go; \
+	@echo "📦 Installing Go 1.23..."
+	@GO_VERSION="1.23.10"; \
+	if command -v apt-get >/dev/null 2>&1; then \
+		echo "📦 Installing Go $$GO_VERSION from official source..."; \
+		sudo rm -rf /usr/local/go; \
+		wget -qO- "https://go.dev/dl/go$$GO_VERSION.linux-amd64.tar.gz" | sudo tar -C /usr/local -xzf -; \
+		echo "✅ Go $$GO_VERSION installed from official source"; \
 	elif command -v yum >/dev/null 2>&1; then \
 		echo "📦 Using yum to install Go..."; \
 		sudo yum install -y golang; \
@@ -181,17 +185,12 @@ install-go:
 		brew install go; \
 	else \
 		echo "❌ No supported package manager found."; \
-		echo "📋 Manual installation options:"; \
-		echo "   1. Visit: https://golang.org/dl/"; \
-		echo "   2. Use snap: sudo snap install go --classic"; \
-		echo "   3. Download and extract to /usr/local/go"; \
-		echo ""; \
-		echo "🔧 Quick install script (run manually):"; \
-		echo "   wget -qO- https://golang.org/dl/go1.21.6.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf -"; \
+		echo "📋 Manual installation:"; \
+		echo "   wget -qO- https://go.dev/dl/go$$GO_VERSION.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf -"; \
 		echo "   export PATH=\$$PATH:/usr/local/go/bin"; \
 		exit 1; \
-	fi; \
-	@echo "🔍 Verifying installation..."; \
+	fi
+	@echo "🔍 Verifying installation..."
 	@if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then \
 		GO_VERSION=$$(go version 2>/dev/null | cut -d' ' -f3 || echo "unknown"); \
 		echo "✅ Go installation completed: $$GO_VERSION"; \
@@ -286,6 +285,38 @@ fix-go:
 		echo "🔧 Manual steps:"; \
 		echo "   export PATH=\$$PATH:/usr/local/go/bin"; \
 		echo "   source ~/.bashrc"; \
+	fi
+
+.PHONY: check-gosec
+check-gosec:
+	@echo "🔍 Checking gosec installation..."
+	@if ! command -v gosec >/dev/null 2>&1; then \
+		echo "❌ gosec is not installed. Installing gosec..."; \
+		$(MAKE) install-gosec; \
+	else \
+		echo "✅ gosec is already installed: $$(gosec --version 2>/dev/null || echo 'version unknown')"; \
+	fi
+
+.PHONY: install-gosec
+install-gosec:
+	@echo "📦 Installing gosec security scanner..."
+	@if ! go install github.com/securego/gosec/v2/cmd/gosec@latest; then \
+		echo "❌ Failed to install gosec"; \
+		echo "🔧 Troubleshooting:"; \
+		echo "   1. Check internet connection"; \
+		echo "   2. Verify GOPROXY settings: go env GOPROXY"; \
+		echo "   3. Clear module cache: go clean -modcache"; \
+		exit 1; \
+	fi
+	@echo "🔍 Verifying gosec installation..."
+	@export PATH="$$(go env GOPATH)/bin:$$PATH"; \
+	if command -v gosec >/dev/null 2>&1; then \
+		echo "✅ gosec installation completed: $$(gosec --version 2>/dev/null || echo 'installed successfully')"; \
+	else \
+		echo "❌ gosec installation failed or not in PATH"; \
+		echo "🔧 Try adding Go bin to your PATH:"; \
+		echo "   export PATH=\"$$(go env GOPATH)/bin:\$$PATH\""; \
+		exit 1; \
 	fi
 
 # Build for current platform
@@ -435,7 +466,7 @@ test-cli:
 
 # Security Test Suite
 .PHONY: test-security
-test-security:
+test-security: check-gosec
 	@echo "Running security test suite..."
 	@chmod +x ./scripts/security-test.sh
 	@./scripts/security-test.sh
