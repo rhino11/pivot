@@ -27,7 +27,7 @@ PLATFORMS = \
 
 # Default target
 .PHONY: all
-all: clean deps build
+all: clean check-go deps build
 
 # Help target
 .PHONY: help
@@ -36,11 +36,13 @@ help:
 	@echo "======================"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  all           - Clean, install dependencies, and build"
+	@echo "  all           - Clean, check Go, install dependencies, and build"
 	@echo "  build         - Build binary for current platform"
 	@echo "  build-all     - Build binaries for all platforms"
 	@echo "  clean         - Remove build artifacts"
+	@echo "  check-go      - Check if Go is installed and install if missing"
 	@echo "  deps          - Install Go dependencies"
+	@echo "  fix-go        - Troubleshoot and fix common Go issues"
 	@echo "  test          - Run tests"
 	@echo "  lint          - Run Go linter"
 	@echo "  coverage      - Generate test coverage report"
@@ -75,7 +77,7 @@ help:
 
 # CI Pipeline - Match GitHub Actions workflow exactly
 .PHONY: ci
-ci: clean deps lint test test-cli test-security build
+ci: clean check-go deps lint test test-cli test-security build
 	@echo ""
 	@echo "🎉 CI Pipeline completed successfully!"
 	@echo "✅ Dependencies installed"
@@ -89,7 +91,7 @@ ci: clean deps lint test test-cli test-security build
 
 # Local CI Pipeline - Includes formatting for local development
 .PHONY: ci-local
-ci-local: clean deps format lint test test-cli test-security build
+ci-local: clean check-go deps format lint test test-cli test-security build
 	@echo ""
 	@echo "🎉 Local CI Pipeline completed successfully!"
 	@echo "✅ Dependencies installed"
@@ -104,7 +106,7 @@ ci-local: clean deps format lint test test-cli test-security build
 
 # Full CI Pipeline - Includes coverage, E2E tests, and multi-platform builds
 .PHONY: ci-full
-ci-full: clean deps format lint test coverage test-cli test-security build-all test-e2e
+ci-full: clean check-go deps format lint test coverage test-cli test-security build-all test-e2e
 	@echo ""
 	@echo "🎉 Full CI Pipeline completed successfully!"
 	@echo "✅ Dependencies installed"
@@ -132,10 +134,159 @@ ci-quick: format lint test test-cli
 	@echo "Ready for development! 🚀"
 
 # Dependencies
+.PHONY: check-go
+check-go:
+	@echo "🔍 Checking Go installation..."
+	@if ! command -v go >/dev/null 2>&1; then \
+		echo "❌ Go is not installed. Installing Go..."; \
+		$(MAKE) install-go; \
+	else \
+		echo "🔧 Validating Go installation..."; \
+		if ! go version >/dev/null 2>&1; then \
+			echo "❌ Go command exists but is not functioning properly"; \
+			echo "🔄 Attempting to reinstall Go..."; \
+			$(MAKE) install-go; \
+		else \
+			GO_VERSION=$$(go version 2>/dev/null | cut -d' ' -f3 | sed 's/go//' || echo "unknown"); \
+			REQUIRED_VERSION="1.21"; \
+			echo "✅ Go is installed: go$$GO_VERSION"; \
+			if ! $(MAKE) check-go-version GO_VERSION=$$GO_VERSION REQUIRED_VERSION=$$REQUIRED_VERSION; then \
+				echo "⚠️  Go version $$GO_VERSION may be incompatible with this project (requires ≥$$REQUIRED_VERSION)"; \
+				echo "🔄 Attempting to install a compatible version..."; \
+				$(MAKE) install-go; \
+			fi; \
+		fi; \
+	fi
+
+.PHONY: install-go
+install-go:
+	@echo "📦 Installing Go..."
+	@if command -v apt-get >/dev/null 2>&1; then \
+		echo "📦 Using apt-get to install Go..."; \
+		sudo apt-get update -qq && sudo apt-get install -y golang-go; \
+	elif command -v yum >/dev/null 2>&1; then \
+		echo "📦 Using yum to install Go..."; \
+		sudo yum install -y golang; \
+	elif command -v dnf >/dev/null 2>&1; then \
+		echo "📦 Using dnf to install Go..."; \
+		sudo dnf install -y golang; \
+	elif command -v pacman >/dev/null 2>&1; then \
+		echo "📦 Using pacman to install Go..."; \
+		sudo pacman -S --noconfirm go; \
+	elif command -v zypper >/dev/null 2>&1; then \
+		echo "📦 Using zypper to install Go..."; \
+		sudo zypper install -y go; \
+	elif command -v brew >/dev/null 2>&1; then \
+		echo "📦 Using Homebrew to install Go..."; \
+		brew install go; \
+	else \
+		echo "❌ No supported package manager found."; \
+		echo "📋 Manual installation options:"; \
+		echo "   1. Visit: https://golang.org/dl/"; \
+		echo "   2. Use snap: sudo snap install go --classic"; \
+		echo "   3. Download and extract to /usr/local/go"; \
+		echo ""; \
+		echo "🔧 Quick install script (run manually):"; \
+		echo "   wget -qO- https://golang.org/dl/go1.21.6.linux-amd64.tar.gz | sudo tar -C /usr/local -xzf -"; \
+		echo "   export PATH=\$$PATH:/usr/local/go/bin"; \
+		exit 1; \
+	fi; \
+	@echo "🔍 Verifying installation..."; \
+	@if command -v go >/dev/null 2>&1 && go version >/dev/null 2>&1; then \
+		GO_VERSION=$$(go version 2>/dev/null | cut -d' ' -f3 || echo "unknown"); \
+		echo "✅ Go installation completed: $$GO_VERSION"; \
+	else \
+		echo "❌ Go installation failed or is not working properly"; \
+		echo "🔧 Try adding Go to your PATH:"; \
+		echo "   export PATH=\$$PATH:/usr/local/go/bin"; \
+		echo "   # Add this to your ~/.bashrc or ~/.zshrc for persistence"; \
+		exit 1; \
+	fi
+
+.PHONY: check-go-version
+check-go-version:
+	@if [ -z "$(GO_VERSION)" ] || [ -z "$(REQUIRED_VERSION)" ]; then \
+		echo "❌ GO_VERSION and REQUIRED_VERSION must be provided"; \
+		exit 1; \
+	fi; \
+	CURRENT_MAJOR=$$(echo "$(GO_VERSION)" | cut -d'.' -f1); \
+	CURRENT_MINOR=$$(echo "$(GO_VERSION)" | cut -d'.' -f2); \
+	REQUIRED_MAJOR=$$(echo "$(REQUIRED_VERSION)" | cut -d'.' -f1); \
+	REQUIRED_MINOR=$$(echo "$(REQUIRED_VERSION)" | cut -d'.' -f2); \
+	if [ "$$CURRENT_MAJOR" -gt "$$REQUIRED_MAJOR" ] || \
+	   ([ "$$CURRENT_MAJOR" -eq "$$REQUIRED_MAJOR" ] && [ "$$CURRENT_MINOR" -ge "$$REQUIRED_MINOR" ]); then \
+		exit 0; \
+	else \
+		exit 1; \
+	fi
+
 .PHONY: deps
 deps:
-	$(GO_CMD) mod download
-	$(GO_CMD) mod tidy
+	@echo "📦 Installing Go dependencies..."
+	@if ! go mod download 2>/dev/null; then \
+		echo "⚠️  Initial mod download failed, attempting fixes..."; \
+		if go version | grep -q "go1\.2[0-4]"; then \
+			echo "🔄 Detected newer Go version, updating go.mod..."; \
+			go mod edit -go=1.21; \
+			echo "✅ Updated go.mod to use Go 1.21 for compatibility"; \
+		fi; \
+		echo "🔄 Retrying dependency download..."; \
+		go mod download || { \
+			echo "❌ Dependency download failed. Possible solutions:"; \
+			echo "   1. Check internet connection"; \
+			echo "   2. Verify GOPROXY settings: go env GOPROXY"; \
+			echo "   3. Clear module cache: go clean -modcache"; \
+			echo "   4. Check for network proxy issues"; \
+			exit 1; \
+		}; \
+	fi
+	@echo "🧹 Tidying module dependencies..."
+	@go mod tidy || { \
+		echo "❌ Module tidy failed"; \
+		echo "🔧 Try: go clean -modcache && go mod download"; \
+		exit 1; \
+	}
+	@echo "✅ Dependencies installed and verified"
+
+.PHONY: fix-go
+fix-go:
+	@echo "🔧 Diagnosing Go installation issues..."
+	@echo ""
+	@echo "📋 Go Environment:"
+	@if command -v go >/dev/null 2>&1; then \
+		echo "   Go Version: $$(go version 2>/dev/null || echo 'ERROR: go version failed')"; \
+		echo "   Go Root: $$(go env GOROOT 2>/dev/null || echo 'ERROR: GOROOT not set')"; \
+		echo "   Go Path: $$(go env GOPATH 2>/dev/null || echo 'ERROR: GOPATH not set')"; \
+		echo "   Go Proxy: $$(go env GOPROXY 2>/dev/null || echo 'ERROR: GOPROXY not set')"; \
+		echo "   Go Mod Cache: $$(go env GOMODCACHE 2>/dev/null || echo 'ERROR: GOMODCACHE not set')"; \
+	else \
+		echo "   ❌ Go command not found in PATH"; \
+	fi
+	@echo ""
+	@echo "🔍 Common fixes:"
+	@echo "   1. Clear module cache: go clean -modcache"
+	@echo "   2. Reset proxy: go env -w GOPROXY=https://proxy.golang.org,direct"
+	@echo "   3. Update Go toolchain: go install golang.org/dl/go1.21.6@latest && go1.21.6 download"
+	@echo "   4. Check PATH includes Go bin directory"
+	@echo ""
+	@echo "🛠️  Attempting automatic fixes..."
+	@if command -v go >/dev/null 2>&1; then \
+		echo "📁 Clearing module cache..."; \
+		go clean -modcache 2>/dev/null || echo "   ⚠️  Cache clear failed"; \
+		echo "🌐 Resetting GOPROXY..."; \
+		go env -w GOPROXY=https://proxy.golang.org,direct 2>/dev/null || echo "   ⚠️  GOPROXY reset failed"; \
+		echo "📊 Testing basic go command..."; \
+		if go version >/dev/null 2>&1; then \
+			echo "   ✅ Go command working"; \
+		else \
+			echo "   ❌ Go command still failing"; \
+		fi; \
+	else \
+		echo "❌ Cannot run fixes - Go not found in PATH"; \
+		echo "🔧 Manual steps:"; \
+		echo "   export PATH=\$$PATH:/usr/local/go/bin"; \
+		echo "   source ~/.bashrc"; \
+	fi
 
 # Build for current platform
 .PHONY: build
