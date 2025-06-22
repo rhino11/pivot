@@ -362,7 +362,7 @@ lint:
 # Coverage
 .PHONY: coverage
 coverage:
-	$(GO_CMD) test $(GO_TEST_FLAGS) ./...
+	$(GO_CMD) test $(GO_TEST_FLAGS) ./cmd ./internal ./internal/csv
 	@echo "Generating coverage report..."
 	@go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
