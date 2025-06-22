@@ -20,7 +20,7 @@ func main() {
 	}
 
 	csvFile := os.Args[1]
-	
+
 	// Open the CSV file
 	file, err := os.Open(csvFile)
 	if err != nil {
@@ -64,7 +64,7 @@ func main() {
 		updated_at TEXT,
 		closed_at TEXT
 	);`
-	
+
 	_, err = db.Exec(schema)
 	if err != nil {
 		fmt.Printf("Error creating schema: %v\n", err)
@@ -123,7 +123,7 @@ func main() {
 		body := getField(record, headerMap, "body")
 		labels := getField(record, headerMap, "labels")
 		assignee := getField(record, headerMap, "assignee")
-		
+
 		// Use current time if timestamps not provided
 		now := time.Now().Format(time.RFC3339)
 		createdAt := getField(record, headerMap, "created_at")
@@ -141,12 +141,12 @@ func main() {
 			INSERT OR REPLACE INTO issues (github_id, number, title, body, state, labels, assignees, created_at, updated_at, closed_at)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			githubID, githubID, title, body, state, labels, assignee, createdAt, updatedAt, closedAt)
-		
+
 		if err != nil {
 			fmt.Printf("Error inserting row %d: %v\n", i+2, err)
 			continue
 		}
-		
+
 		inserted++
 		if inserted%5 == 0 {
 			fmt.Printf("✓ Imported %d issues...\n", inserted)

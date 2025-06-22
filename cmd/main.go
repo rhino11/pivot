@@ -228,7 +228,7 @@ Examples:
 
 			cmd.Println("📊 Sync State Summary")
 			cmd.Println("====================")
-			
+
 			total := 0
 			for state, count := range summary {
 				total += count
@@ -255,14 +255,14 @@ Examples:
 				default:
 					icon, description = "❓", "Unknown state"
 				}
-				
+
 				cmd.Printf("  %s %s: %d issues", icon, state, count)
 				if verbose {
 					cmd.Printf(" - %s", description)
 				}
 				cmd.Println()
 			}
-			
+
 			cmd.Printf("\nTotal: %d issues\n", total)
 
 			// Show actionable items
@@ -343,10 +343,10 @@ Examples:
 			// 1. Loading GitHub configuration
 			// 2. For each local-only issue, create it on GitHub
 			// 3. Update sync state to SYNCED with the new GitHub ID
-			
+
 			cmd.Println("⚠️  Push functionality is not yet implemented")
 			cmd.Println("This will be implemented in the next phase of development")
-			
+
 			return nil
 		},
 	}
@@ -394,7 +394,7 @@ Examples:
 			// 1. For each conflicted issue, show local vs remote differences
 			// 2. Allow user to choose resolution strategy
 			// 3. Update the issue and sync state accordingly
-			
+
 			cmd.Println("⚠️  Conflict resolution functionality is not yet implemented")
 			cmd.Println("This will be implemented in the next phase of development")
 
