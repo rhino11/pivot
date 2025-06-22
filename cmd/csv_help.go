@@ -81,7 +81,7 @@ func showCSVFormatGuide() {
 	// Examples
 	fmt.Println("📋 Example CSV Files:")
 	fmt.Println()
-	
+
 	fmt.Println("🟢 Minimal CSV:")
 	fmt.Println("```csv")
 	fmt.Println("title,state")

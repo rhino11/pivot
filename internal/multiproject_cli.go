@@ -259,6 +259,11 @@ func syncProject(db *sql.DB, global *GlobalConfig, project *ProjectConfig) error
 		return fmt.Errorf("no GitHub token configured for project %s/%s", project.Owner, project.Repo)
 	}
 
+	// Validate GitHub credentials before attempting sync
+	if err := EnsureGitHubCredentials(project.Owner, project.Repo, token); err != nil {
+		return fmt.Errorf("GitHub credential validation failed for %s/%s: %w", project.Owner, project.Repo, err)
+	}
+
 	// Ensure project exists in database
 	projectID, err := CreateProject(db, project)
 	if err != nil {

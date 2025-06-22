@@ -88,7 +88,7 @@ func ValidateCSV(filePath string) error {
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("failed to read file beginning: %w", err)
 	}
-	
+
 	// Reset file position
 	_, err = file.Seek(0, 0)
 	if err != nil {
@@ -186,7 +186,7 @@ func ParseCSV(filePath string, config *ImportConfig) ([]*Issue, error) {
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("failed to read file beginning: %w", err)
 	}
-	
+
 	// Reset file position
 	_, err = file.Seek(0, 0)
 	if err != nil {
@@ -451,6 +451,13 @@ func ImportCSVToGitHub(filePath, owner, repo, token string, config *ImportConfig
 	issues, err := ParseCSV(filePath, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSV: %w", err)
+	}
+
+	// Validate GitHub credentials before attempting import (unless in dry-run mode)
+	if !config.DryRun {
+		if err := internal.EnsureGitHubCredentials(owner, repo, token); err != nil {
+			return nil, fmt.Errorf("GitHub credential validation failed: %w", err)
+		}
 	}
 
 	result := &ImportResult{

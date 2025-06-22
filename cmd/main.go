@@ -432,141 +432,110 @@ Examples:
 		},
 	}
 
+	// Auth command for credential verification
+	var authCmd = &cobra.Command{
+		Use:   "auth",
+		Short: "Authentication and credential management",
+		Long:  `Manage GitHub authentication tokens and verify access.`,
+	}
+
+	var authVerifyCmd = &cobra.Command{
+		Use:   "verify",
+		Short: "Verify GitHub credentials and repository access",
+		Long: `Verify that your GitHub token is valid and has proper access to repositories.
+
+Examples:
+  pivot auth verify                    # Verify with config token
+  pivot auth verify --owner myorg --repo myrepo  # Verify access to specific repo`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			owner, _ := cmd.Flags().GetString("owner")
+			repo, _ := cmd.Flags().GetString("repo")
+			tokenFlag, _ := cmd.Flags().GetString("token")
+
+			cmd.Println("🔐 Verifying GitHub Credentials")
+			cmd.Println("==============================")
+
+			var token string
+			var configOwner, configRepo string
+
+			// Get token from flag or config
+			if tokenFlag != "" {
+				token = tokenFlag
+			} else {
+				// Try to load from config
+				cfg, err := internal.LoadConfig()
+				if err != nil {
+					// Try multi-project config
+					multiConfig, multiErr := internal.LoadMultiProjectConfig()
+					if multiErr != nil {
+						return fmt.Errorf("failed to load configuration: %w (run 'pivot init' to set up config)", err)
+					}
+
+					if multiConfig.Global.Token != "" {
+						token = multiConfig.Global.Token
+						cmd.Println("📋 Using global token from multi-project config")
+					} else {
+						return fmt.Errorf("no GitHub token found in configuration. Run 'pivot init' to set up")
+					}
+				} else {
+					token = cfg.Token
+					configOwner = cfg.Owner
+					configRepo = cfg.Repo
+					cmd.Println("📋 Using token from single-project config")
+				}
+			}
+
+			// Use owner/repo from flags or config
+			if owner == "" {
+				owner = configOwner
+			}
+			if repo == "" {
+				repo = configRepo
+			}
+
+			// Validate basic credentials
+			cmd.Println("\n🧪 Testing GitHub token validity...")
+			if err := internal.ValidateGitHubCredentials(token); err != nil {
+				cmd.Printf("❌ Token validation failed: %v\n", err)
+				return err
+			}
+			cmd.Println("✅ GitHub token is valid")
+
+			// Test repository access if specified
+			if owner != "" && repo != "" {
+				cmd.Printf("\n🔍 Testing access to repository %s/%s...\n", owner, repo)
+				if err := internal.ValidateRepositoryAccess(owner, repo, token); err != nil {
+					cmd.Printf("❌ Repository access failed: %v\n", err)
+					return err
+				}
+				cmd.Printf("✅ Repository %s/%s is accessible\n", owner, repo)
+			} else {
+				cmd.Println("\n💡 Tip: Use --owner and --repo flags to test specific repository access")
+			}
+
+			cmd.Println("\n🎉 All credential checks passed!")
+			return nil
+		},
+	}
+
+	// Add flags to auth verify command
+	authVerifyCmd.Flags().String("owner", "", "GitHub repository owner/organization")
+	authVerifyCmd.Flags().String("repo", "", "GitHub repository name")
+	authVerifyCmd.Flags().String("token", "", "GitHub token to verify (instead of using config)")
+
+	// Build auth command hierarchy
+	authCmd.AddCommand(authVerifyCmd)
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(createCSVHelpCommand())
 	rootCmd.AddCommand(versionCmd)
 
 	return rootCmd
-}
-
-// createCSVHelpCommand creates the CSV help command that provides format guidance
-func createCSVHelpCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "csv-format",
-		Short: "Show CSV format guidelines and examples",
-		Long: `Display comprehensive CSV format guidelines, field descriptions, and examples for importing/exporting GitHub issues.
-
-This command provides detailed information about:
-- Required and optional CSV fields  
-- Formatting rules and best practices
-- Common use cases and examples
-- Troubleshooting guidance`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			showCSVFormatGuide()
-			return nil
-		},
-	}
-
-	return cmd
-}
-
-// showCSVFormatGuide displays the comprehensive CSV format guide
-func showCSVFormatGuide() {
-	fmt.Println("📊 Pivot CSV Format Guide")
-	fmt.Println("=" + strings.Repeat("=", 24))
-	fmt.Println()
-
-	// Required Fields
-	fmt.Println("🔴 Required Fields:")
-	fmt.Println("  • title - Issue title (cannot be empty)")
-	fmt.Println()
-
-	// Optional Fields
-	fmt.Println("🟡 Optional Fields:")
-	fields := []struct {
-		name        string
-		description string
-		example     string
-	}{
-		{"id", "Issue ID", "123"},
-		{"state", "Issue state", "open, closed"},
-		{"priority", "Issue priority", "high, medium, low"},
-		{"labels", "Comma-separated labels", "bug,urgent,security"},
-		{"assignee", "Assigned user", "john.doe"},
-		{"milestone", "Milestone name", "v1.0.0"},
-		{"body", "Issue description", "Detailed description..."},
-		{"estimated_hours", "Estimated work hours", "8"},
-		{"story_points", "Story points", "5"},
-		{"epic", "Epic name", "User Authentication"},
-		{"dependencies", "Comma-separated issue IDs", "45,67,89"},
-		{"acceptance_criteria", "Acceptance criteria", "User can login successfully"},
-		{"created_at", "Creation timestamp", "2024-01-15T10:00:00Z"},
-		{"updated_at", "Last update timestamp", "2024-01-15T10:30:00Z"},
-	}
-
-	for _, field := range fields {
-		fmt.Printf("  • %-18s - %s\n", field.name, field.description)
-		fmt.Printf("    %sExample: %s%s\n", "\033[90m", field.example, "\033[0m")
-	}
-	fmt.Println()
-
-	// Formatting Rules
-	fmt.Println("📝 Formatting Rules:")
-	fmt.Println("  1. Header row must contain field names (case-insensitive)")
-	fmt.Println("  2. Enclose values with commas/quotes in double quotes")
-	fmt.Println("  3. Escape internal quotes by doubling: \"Issue with \"\"quotes\"\"\"")
-	fmt.Println("  4. Use comma separation for multi-value fields")
-	fmt.Println("  5. Use RFC3339 format for dates: 2024-01-15T10:00:00Z")
-	fmt.Println("  6. Leave empty for optional fields: \"\"")
-	fmt.Println()
-
-	// Examples
-	fmt.Println("📋 Example CSV Files:")
-	fmt.Println()
-	
-	fmt.Println("🟢 Minimal CSV:")
-	fmt.Println("```csv")
-	fmt.Println("title,state")
-	fmt.Println("\"Fix login bug\",\"open\"")
-	fmt.Println("\"Add user dashboard\",\"closed\"")
-	fmt.Println("```")
-	fmt.Println()
-
-	fmt.Println("🟢 Complete CSV:")
-	fmt.Println("```csv")
-	fmt.Println("id,title,state,priority,labels,assignee,milestone,estimated_hours,story_points")
-	fmt.Println("1,\"Implement authentication\",\"open\",\"high\",\"backend,security\",\"john\",\"v1.0\",16,8")
-	fmt.Println("2,\"Design login UI\",\"open\",\"medium\",\"frontend,ui\",\"jane\",\"v1.0\",8,5")
-	fmt.Println("```")
-	fmt.Println()
-
-	// Commands
-	fmt.Println("🚀 Quick Start Commands:")
-	fmt.Println("  # Preview import (recommended first step)")
-	fmt.Println("  pivot import csv --preview issues.csv")
-	fmt.Println()
-	fmt.Println("  # Dry-run import (validates without creating)")
-	fmt.Println("  pivot import csv --dry-run issues.csv")
-	fmt.Println()
-	fmt.Println("  # Actual import")
-	fmt.Println("  pivot import csv issues.csv")
-	fmt.Println()
-	fmt.Println("  # Export current issues")
-	fmt.Println("  pivot export csv --output my-issues.csv")
-	fmt.Println()
-
-	// Common Issues
-	fmt.Println("🔧 Common Issues & Solutions:")
-	fmt.Println("  • 'CSV validation failed: EOF' → File is empty or has no data rows")
-	fmt.Println("  • 'Required column title not found' → Add title column to header")
-	fmt.Println("  • 'Column count mismatch' → Ensure all rows have same number of fields")
-	fmt.Println("  • 'Failed to parse date' → Use RFC3339 format: 2024-01-15T10:00:00Z")
-	fmt.Println()
-
-	// Best Practices
-	fmt.Println("💡 Best Practices:")
-	fmt.Println("  1. Always use --preview flag first")
-	fmt.Println("  2. Test with --dry-run before actual import")
-	fmt.Println("  3. Backup existing issues before importing")
-	fmt.Println("  4. Start with small test files")
-	fmt.Println("  5. Ensure UTF-8 encoding without BOM")
-	fmt.Println()
-
-	fmt.Println("📖 For detailed documentation, see: docs/CSV_FORMAT_GUIDE.md")
 }
 
 // Run executes the main application logic and returns an exit code
