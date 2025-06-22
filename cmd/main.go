@@ -196,6 +196,212 @@ func NewRootCommand() *cobra.Command {
 		},
 	}
 
+	// Sync State Management Commands
+	var statusCmd = &cobra.Command{
+		Use:   "status",
+		Short: "Show sync state summary and local changes",
+		Long: `Display the current sync state of all issues, showing which issues are:
+- LOCAL_ONLY: Created locally, not yet pushed to GitHub
+- PENDING_PUSH: Queued to be pushed to GitHub  
+- SYNCED: Synchronized with GitHub
+- LOCAL_MODIFIED: Modified locally since last sync
+- CONFLICTED: Both local and remote changes detected
+
+Examples:
+  pivot status
+  pivot status --verbose`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			verbose, _ := cmd.Flags().GetBool("verbose")
+
+			// Open database connection
+			db, err := internal.InitDB()
+			if err != nil {
+				return fmt.Errorf("failed to connect to database: %w", err)
+			}
+			defer db.Close()
+
+			// Get sync state summary
+			summary, err := internal.GetSyncStateSummary(db)
+			if err != nil {
+				return fmt.Errorf("failed to get sync state summary: %w", err)
+			}
+
+			cmd.Println("📊 Sync State Summary")
+			cmd.Println("====================")
+
+			total := 0
+			for state, count := range summary {
+				total += count
+				var icon, description string
+				switch state {
+				case internal.SyncStateLocalOnly:
+					icon, description = "📝", "Created locally, not on GitHub"
+				case internal.SyncStatePendingPush:
+					icon, description = "⏳", "Queued for GitHub creation"
+				case internal.SyncStatePushFailed:
+					icon, description = "❌", "Failed to push to GitHub"
+				case internal.SyncStateSynced:
+					icon, description = "✅", "Synchronized with GitHub"
+				case internal.SyncStateLocalModified:
+					icon, description = "📝", "Modified locally since sync"
+				case internal.SyncStatePendingSync:
+					icon, description = "⏳", "Queued for GitHub update"
+				case internal.SyncStateSyncFailed:
+					icon, description = "❌", "Failed to sync to GitHub"
+				case internal.SyncStateConflicted:
+					icon, description = "⚠️", "Conflicting local/remote changes"
+				case internal.SyncStateError:
+					icon, description = "💥", "Unrecoverable error state"
+				default:
+					icon, description = "❓", "Unknown state"
+				}
+
+				cmd.Printf("  %s %s: %d issues", icon, state, count)
+				if verbose {
+					cmd.Printf(" - %s", description)
+				}
+				cmd.Println()
+			}
+
+			cmd.Printf("\nTotal: %d issues\n", total)
+
+			// Show actionable items
+			if verbose {
+				cmd.Println("\n💡 Next Actions:")
+				if localOnlyCount := summary[internal.SyncStateLocalOnly]; localOnlyCount > 0 {
+					cmd.Printf("  • Run 'pivot push' to push %d local-only issues to GitHub\n", localOnlyCount)
+				}
+				if modifiedCount := summary[internal.SyncStateLocalModified]; modifiedCount > 0 {
+					cmd.Printf("  • Run 'pivot sync' to sync %d locally modified issues\n", modifiedCount)
+				}
+				if conflictedCount := summary[internal.SyncStateConflicted]; conflictedCount > 0 {
+					cmd.Printf("  • Run 'pivot resolve' to handle %d conflicted issues\n", conflictedCount)
+				}
+				if failedCount := summary[internal.SyncStatePushFailed] + summary[internal.SyncStateSyncFailed]; failedCount > 0 {
+					cmd.Printf("  • Check and retry %d failed sync operations\n", failedCount)
+				}
+			}
+
+			return nil
+		},
+	}
+
+	var pushCmd = &cobra.Command{
+		Use:   "push",
+		Short: "Push local-only issues to GitHub",
+		Long: `Push issues that were created locally (LOCAL_ONLY state) to GitHub.
+This creates new GitHub issues for locally created issues and updates their sync state.
+
+Examples:
+  pivot push                    # Push all local-only issues
+  pivot push --dry-run         # Preview what would be pushed
+  pivot push --limit 10        # Push up to 10 issues`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			limit, _ := cmd.Flags().GetInt("limit")
+
+			// Open database connection
+			db, err := internal.InitDB()
+			if err != nil {
+				return fmt.Errorf("failed to connect to database: %w", err)
+			}
+			defer db.Close()
+
+			// Get local-only issues
+			localOnlyIssues, err := internal.GetSyncStatesByState(db, internal.SyncStateLocalOnly)
+			if err != nil {
+				return fmt.Errorf("failed to get local-only issues: %w", err)
+			}
+
+			if len(localOnlyIssues) == 0 {
+				cmd.Println("🎉 No local-only issues to push!")
+				return nil
+			}
+
+			// Apply limit if specified
+			issuesToPush := localOnlyIssues
+			if limit > 0 && len(issuesToPush) > limit {
+				issuesToPush = localOnlyIssues[:limit]
+				cmd.Printf("📌 Limiting push to first %d of %d local-only issues\n", limit, len(localOnlyIssues))
+			}
+
+			cmd.Printf("🚀 Found %d local-only issues to push\n", len(issuesToPush))
+
+			if dryRun {
+				cmd.Println("\n🧪 Dry Run Mode - No issues will be pushed")
+				cmd.Println("=========================================")
+				for i, syncState := range issuesToPush {
+					// TODO: Get issue details from database using syncState.IssueLocalID
+					cmd.Printf("%d. Issue ID %d (Local ID: %d)\n", i+1, syncState.GitHubID, syncState.IssueLocalID)
+				}
+				cmd.Printf("\nTotal: %d issues would be pushed to GitHub\n", len(issuesToPush))
+				return nil
+			}
+
+			// TODO: Implement actual push logic
+			// This would involve:
+			// 1. Loading GitHub configuration
+			// 2. For each local-only issue, create it on GitHub
+			// 3. Update sync state to SYNCED with the new GitHub ID
+
+			cmd.Println("⚠️  Push functionality is not yet implemented")
+			cmd.Println("This will be implemented in the next phase of development")
+
+			return nil
+		},
+	}
+
+	var resolveCmd = &cobra.Command{
+		Use:   "resolve",
+		Short: "Resolve sync conflicts",
+		Long: `Resolve conflicts between local and remote changes for issues.
+Provides interactive resolution for conflicted issues.
+
+Examples:
+  pivot resolve                 # Resolve all conflicts interactively
+  pivot resolve --take-local   # Take local version for all conflicts
+  pivot resolve --take-remote  # Take remote version for all conflicts`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			takeLocal, _ := cmd.Flags().GetBool("take-local")
+			takeRemote, _ := cmd.Flags().GetBool("take-remote")
+
+			if takeLocal && takeRemote {
+				return fmt.Errorf("cannot specify both --take-local and --take-remote")
+			}
+
+			// Open database connection
+			db, err := internal.InitDB()
+			if err != nil {
+				return fmt.Errorf("failed to connect to database: %w", err)
+			}
+			defer db.Close()
+
+			// Get conflicted issues
+			conflictedIssues, err := internal.GetSyncStatesByState(db, internal.SyncStateConflicted)
+			if err != nil {
+				return fmt.Errorf("failed to get conflicted issues: %w", err)
+			}
+
+			if len(conflictedIssues) == 0 {
+				cmd.Println("🎉 No conflicted issues to resolve!")
+				return nil
+			}
+
+			cmd.Printf("⚠️  Found %d conflicted issues\n", len(conflictedIssues))
+
+			// TODO: Implement conflict resolution logic
+			// This would involve:
+			// 1. For each conflicted issue, show local vs remote differences
+			// 2. Allow user to choose resolution strategy
+			// 3. Update the issue and sync state accordingly
+
+			cmd.Println("⚠️  Conflict resolution functionality is not yet implemented")
+			cmd.Println("This will be implemented in the next phase of development")
+
+			return nil
+		},
+	}
+
 	// CSV Import/Export commands
 	var importCmd = &cobra.Command{
 		Use:   "import",
@@ -523,16 +729,25 @@ Examples:
 	authVerifyCmd.Flags().String("repo", "", "GitHub repository name")
 	authVerifyCmd.Flags().String("token", "", "GitHub token to verify (instead of using config)")
 
+	// Add flags to sync state management commands
+	statusCmd.Flags().Bool("verbose", false, "Show detailed status information and next actions")
+	pushCmd.Flags().Bool("dry-run", false, "Preview what would be pushed without making changes")
+	pushCmd.Flags().Int("limit", 0, "Limit number of issues to push (0 = no limit)")
+	resolveCmd.Flags().Bool("take-local", false, "Automatically take local version for all conflicts")
+	resolveCmd.Flags().Bool("take-remote", false, "Automatically take remote version for all conflicts")
+
 	// Build auth command hierarchy
 	authCmd.AddCommand(authVerifyCmd)
 
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(statusCmd)
+	rootCmd.AddCommand(pushCmd)
+	rootCmd.AddCommand(resolveCmd)
 	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
-	rootCmd.AddCommand(createCSVHelpCommand())
 	rootCmd.AddCommand(versionCmd)
 
 	return rootCmd

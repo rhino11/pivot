@@ -1,0 +1,6 @@
+title,state,body,labels,priority
+Fix the login bug,open,"The user login is not working properly in the mobile app. This needs to be fixed urgently.",bug;urgent,high
+Implement dark mode,open,"Add dark mode theme support to improve user experience during night time usage.",feature;ui,medium
+Update documentation,open,"The API documentation is outdated and needs to be refreshed with latest changes.",documentation,low
+Performance optimization,open,"The application is running slow on older devices. We need to optimize the code.",performance;optimization,high
+Unit test coverage,open,"Increase unit test coverage to at least 80% for better code quality assurance.",testing;quality,medium

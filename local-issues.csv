@@ -1,0 +1,6 @@
+title,state,body,labels,assignees
+Fix database connection pooling,open,"Need to implement proper connection pooling to avoid connection leaks",bug,alice
+Add user authentication system,open,"Implement OAuth2 authentication with GitHub integration",enhancement,bob
+Update documentation for new features,open,"Documentation needs to be updated for the latest release",documentation,charlie
+Optimize search performance,in progress,"Search queries are taking too long - need indexing",performance,alice
+Create API rate limiting,open,"Implement rate limiting to prevent API abuse",security,bob
