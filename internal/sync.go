@@ -63,11 +63,17 @@ func Sync() error {
 	if err != nil {
 		return err
 	}
+
 	db, err := InitDB()
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
+	// Validate GitHub credentials before attempting sync
+	if err := EnsureGitHubCredentials(cfg.Owner, cfg.Repo, cfg.Token); err != nil {
+		return fmt.Errorf("GitHub credential validation failed: %w", err)
+	}
 	issues, err := FetchIssues(cfg.Owner, cfg.Repo, cfg.Token)
 	if err != nil {
 		return err

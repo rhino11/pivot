@@ -323,7 +323,7 @@ install-gosec:
 .PHONY: build
 build:
 	mkdir -p $(BUILD_DIR)
-	$(GO_CMD) build $(GO_BUILD_FLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(GO_MAIN)
+	$(GO_CMD) build $(GO_BUILD_FLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
 
 # Build for all platforms
 .PHONY: build-all

@@ -432,11 +432,107 @@ Examples:
 		},
 	}
 
+	// Auth command for credential verification
+	var authCmd = &cobra.Command{
+		Use:   "auth",
+		Short: "Authentication and credential management",
+		Long:  `Manage GitHub authentication tokens and verify access.`,
+	}
+
+	var authVerifyCmd = &cobra.Command{
+		Use:   "verify",
+		Short: "Verify GitHub credentials and repository access",
+		Long: `Verify that your GitHub token is valid and has proper access to repositories.
+
+Examples:
+  pivot auth verify                    # Verify with config token
+  pivot auth verify --owner myorg --repo myrepo  # Verify access to specific repo`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			owner, _ := cmd.Flags().GetString("owner")
+			repo, _ := cmd.Flags().GetString("repo")
+			tokenFlag, _ := cmd.Flags().GetString("token")
+
+			cmd.Println("🔐 Verifying GitHub Credentials")
+			cmd.Println("==============================")
+
+			var token string
+			var configOwner, configRepo string
+
+			// Get token from flag or config
+			if tokenFlag != "" {
+				token = tokenFlag
+			} else {
+				// Try to load from config
+				cfg, err := internal.LoadConfig()
+				if err != nil {
+					// Try multi-project config
+					multiConfig, multiErr := internal.LoadMultiProjectConfig()
+					if multiErr != nil {
+						return fmt.Errorf("failed to load configuration: %w (run 'pivot init' to set up config)", err)
+					}
+
+					if multiConfig.Global.Token != "" {
+						token = multiConfig.Global.Token
+						cmd.Println("📋 Using global token from multi-project config")
+					} else {
+						return fmt.Errorf("no GitHub token found in configuration. Run 'pivot init' to set up")
+					}
+				} else {
+					token = cfg.Token
+					configOwner = cfg.Owner
+					configRepo = cfg.Repo
+					cmd.Println("📋 Using token from single-project config")
+				}
+			}
+
+			// Use owner/repo from flags or config
+			if owner == "" {
+				owner = configOwner
+			}
+			if repo == "" {
+				repo = configRepo
+			}
+
+			// Validate basic credentials
+			cmd.Println("\n🧪 Testing GitHub token validity...")
+			if err := internal.ValidateGitHubCredentials(token); err != nil {
+				cmd.Printf("❌ Token validation failed: %v\n", err)
+				return err
+			}
+			cmd.Println("✅ GitHub token is valid")
+
+			// Test repository access if specified
+			if owner != "" && repo != "" {
+				cmd.Printf("\n🔍 Testing access to repository %s/%s...\n", owner, repo)
+				if err := internal.ValidateRepositoryAccess(owner, repo, token); err != nil {
+					cmd.Printf("❌ Repository access failed: %v\n", err)
+					return err
+				}
+				cmd.Printf("✅ Repository %s/%s is accessible\n", owner, repo)
+			} else {
+				cmd.Println("\n💡 Tip: Use --owner and --repo flags to test specific repository access")
+			}
+
+			cmd.Println("\n🎉 All credential checks passed!")
+			return nil
+		},
+	}
+
+	// Add flags to auth verify command
+	authVerifyCmd.Flags().String("owner", "", "GitHub repository owner/organization")
+	authVerifyCmd.Flags().String("repo", "", "GitHub repository name")
+	authVerifyCmd.Flags().String("token", "", "GitHub token to verify (instead of using config)")
+
+	// Build auth command hierarchy
+	authCmd.AddCommand(authVerifyCmd)
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(importCmd)
 	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(createCSVHelpCommand())
 	rootCmd.AddCommand(versionCmd)
 
 	return rootCmd

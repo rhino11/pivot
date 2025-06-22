@@ -83,10 +83,11 @@ func TestSyncProject_AdditionalCoverage(t *testing.T) {
 
 		err := syncProject(db, globalConfig, projectConfig)
 		if err == nil {
-			t.Error("Expected error when database is closed")
+			t.Error("Expected error when using invalid credentials")
 		}
-		if !strings.Contains(err.Error(), "failed to ensure project in database") {
-			t.Errorf("Expected database error, got: %v", err)
+		// After adding credential validation, we now get credential errors before database errors
+		if !strings.Contains(err.Error(), "GitHub credential validation failed") && !strings.Contains(err.Error(), "failed to ensure project in database") {
+			t.Errorf("Expected credential validation or database error, got: %v", err)
 		}
 	})
 }

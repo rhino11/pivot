@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -565,32 +566,15 @@ API Error Test Issue,open,low,test,"This issue should fail to create due to inva
 		SkipDuplicates: false,
 	}
 
-	// Test import with invalid token (should generate errors)
-	result, err := ImportCSVToGitHub(csvFile, "testowner", "testrepo", "invalid-token", config)
-	if err != nil {
-		t.Fatalf("Import function itself should not fail: %v", err)
+	// Test import with invalid token (should fail credential validation)
+	_, err := ImportCSVToGitHub(csvFile, "testowner", "testrepo", "invalid-token", config)
+	// With credential validation, this should now fail upfront
+	if err == nil {
+		t.Error("Expected credential validation error for invalid token")
 	}
-
-	// Should have parsed the issue but failed to create it
-	if result.Total != 1 {
-		t.Errorf("Expected 1 total issue, got %d", result.Total)
+	if !strings.Contains(err.Error(), "GitHub credential validation failed") {
+		t.Errorf("Expected credential validation error, got: %v", err)
 	}
-	if result.Created != 0 {
-		t.Errorf("Expected 0 created issues due to API error, got %d", result.Created)
-	}
-	if len(result.Errors) == 0 {
-		t.Error("Expected errors to be recorded for failed API calls")
-	}
-
-	// Verify the error message contains useful information
-	if len(result.Errors) > 0 {
-		errorMsg := result.Errors[0]
-		if !contains(errorMsg, "API Error Test Issue") {
-			t.Errorf("Error message should contain issue title, got: %s", errorMsg)
-		}
-	}
-
-	t.Logf("API error handling test passed. Errors recorded: %v", result.Errors)
 }
 
 // Helper function to check if string contains substring

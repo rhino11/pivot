@@ -73,29 +73,80 @@ func ValidateCSV(filePath string) error {
 	}
 	defer file.Close()
 
+	// Check for empty file
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+	if fileInfo.Size() == 0 {
+		return fmt.Errorf("CSV file is empty")
+	}
+
+	// Read a few bytes to check for UTF-8 BOM
+	buf := make([]byte, 3)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("failed to read file beginning: %w", err)
+	}
+
+	// Reset file position
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return fmt.Errorf("failed to reset file position: %w", err)
+	}
+
+	// Skip UTF-8 BOM if present
+	if n >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF {
+		_, err = file.Seek(3, 0)
+		if err != nil {
+			return fmt.Errorf("failed to skip BOM: %w", err)
+		}
+	}
+
 	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1 // Allow variable number of fields initially
 
 	// Read header
 	headers, err := reader.Read()
 	if err != nil {
+		if err == io.EOF {
+			return fmt.Errorf("CSV file contains no data (empty or header-only)")
+		}
 		return fmt.Errorf("failed to read CSV headers: %w", err)
+	}
+
+	if len(headers) == 0 {
+		return fmt.Errorf("CSV header row is empty")
+	}
+
+	// Clean headers (remove BOM from first header if present)
+	if len(headers) > 0 {
+		headers[0] = strings.TrimPrefix(headers[0], "\uFEFF") // Remove UTF-8 BOM
+		headers[0] = strings.TrimSpace(headers[0])
 	}
 
 	// Validate required columns
 	requiredColumns := []string{"title"}
 	headerMap := make(map[string]bool)
 	for _, header := range headers {
-		headerMap[strings.ToLower(strings.TrimSpace(header))] = true
+		cleanHeader := strings.ToLower(strings.TrimSpace(header))
+		if cleanHeader != "" {
+			headerMap[cleanHeader] = true
+		}
 	}
 
 	for _, required := range requiredColumns {
 		if !headerMap[required] {
-			return fmt.Errorf("required column '%s' not found in CSV", required)
+			return fmt.Errorf("required column '%s' not found in CSV headers: %v", required, headers)
 		}
 	}
 
+	// Set expected field count for remaining validation
+	reader.FieldsPerRecord = len(headers)
+
 	// Validate each row
 	lineNum := 2 // Start from line 2 (after header)
+	rowCount := 0
 	for {
 		record, err := reader.Read()
 		if err == io.EOF {
@@ -110,7 +161,12 @@ func ValidateCSV(filePath string) error {
 				lineNum, len(headers), len(record))
 		}
 
+		rowCount++
 		lineNum++
+	}
+
+	if rowCount == 0 {
+		return fmt.Errorf("CSV file contains no data rows (header-only)")
 	}
 
 	return nil
@@ -124,18 +180,56 @@ func ParseCSV(filePath string, config *ImportConfig) ([]*Issue, error) {
 	}
 	defer file.Close()
 
+	// Check for UTF-8 BOM and skip it
+	buf := make([]byte, 3)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to read file beginning: %w", err)
+	}
+
+	// Reset file position
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reset file position: %w", err)
+	}
+
+	// Skip UTF-8 BOM if present
+	if n >= 3 && buf[0] == 0xEF && buf[1] == 0xBB && buf[2] == 0xBF {
+		_, err = file.Seek(3, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to skip BOM: %w", err)
+		}
+	}
+
 	reader := csv.NewReader(file)
 
 	// Read header
 	headers, err := reader.Read()
 	if err != nil {
+		if err == io.EOF {
+			return nil, fmt.Errorf("CSV file is empty or contains no headers")
+		}
 		return nil, fmt.Errorf("failed to read CSV headers: %w", err)
+	}
+
+	// Clean headers (remove BOM from first header if present)
+	if len(headers) > 0 {
+		headers[0] = strings.TrimPrefix(headers[0], "\uFEFF") // Remove UTF-8 BOM
+		headers[0] = strings.TrimSpace(headers[0])
 	}
 
 	// Create header index map
 	headerIndex := make(map[string]int)
 	for i, header := range headers {
-		headerIndex[strings.ToLower(strings.TrimSpace(header))] = i
+		cleanHeader := strings.ToLower(strings.TrimSpace(header))
+		if cleanHeader != "" {
+			headerIndex[cleanHeader] = i
+		}
+	}
+
+	// Validate required columns
+	if _, exists := headerIndex["title"]; !exists {
+		return nil, fmt.Errorf("required column 'title' not found in CSV headers: %v", headers)
 	}
 
 	var issues []*Issue
@@ -357,6 +451,13 @@ func ImportCSVToGitHub(filePath, owner, repo, token string, config *ImportConfig
 	issues, err := ParseCSV(filePath, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CSV: %w", err)
+	}
+
+	// Validate GitHub credentials before attempting import (unless in dry-run mode)
+	if !config.DryRun {
+		if err := internal.EnsureGitHubCredentials(owner, repo, token); err != nil {
+			return nil, fmt.Errorf("GitHub credential validation failed: %w", err)
+		}
 	}
 
 	result := &ImportResult{
